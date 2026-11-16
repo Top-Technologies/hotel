@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="hotel_walkin_wizard_view_form" model="ir.ui.view">
+        <field name="name">hotel.walkin.wizard.form</field>
+        <field name="model">hotel.walkin.wizard</field>
+        <field name="arch" type="xml">
+            <form string="New Book Guest">
+                <group>
+                    <group string="Guest">
+                        <field name="customer_type"/>
+                        <field name="guest_id"
+                               create_edit="1"
+                               context="{'default_is_company': customer_type == 'corporate'}"
+                               placeholder="Type a name or pick a guest"/>
+                        <field name="contact_name"
+                               invisible="customer_type != 'corporate'"
+                               placeholder="Staying contact"/>
+                        <field name="phone" widget="phone"/>
+                        <field name="email" widget="email"/>
+                        <field name="nationality_id" invisible="customer_type == 'corporate'"/>
+                        <field name="id_type" invisible="customer_type == 'corporate'"/>
+                        <field name="id_number"
+                               invisible="customer_type == 'corporate' or not id_type"/>
+                        <field name="id_document"
+                               filename="id_document_filename"
+                               widget="binary"
+                               invisible="customer_type == 'corporate'"/>
+                        <field name="id_document_filename" invisible="1"/>
+                    </group>
+                    <group string="Stay">
+                        <field name="room_type_id"/>
+                        <field name="room_id"/>
+                        <field name="checkin"/>
+                        <field name="nights"/>
+                        <field name="checkout"/>
+                        <field name="deposit"/>
+                        <field name="deposit_journal_id" string="Bank or Cash"
+                               options="{'no_create': True, 'no_open': True}"
+                               placeholder="Select Bank or Cash journal..."/>
+                        <field name="currency_id" invisible="1"/>
+                    </group>
+                </group>
+                <group string="Additional Guests">
+                    <field name="guest_line_ids" context="{'default_wizard_id': id}">
+                        <list string="Other guests sharing the room" editable="bottom">
+                            <field name="name"/>
+                            <field name="phone" widget="phone"/>
+                            <field name="gender"/>
+                            <field name="birth_date" optional="hide"/>
+                            <field name="notes" optional="hide"/>
+                        </list>
+                    </field>
+                </group>
+                <group>
+                    <group string="Guests">
+                        <field name="adults"/>
+                        <field name="children"/>
+                    </group>
+                    <group string="Note">
+                        <p class="text-muted mb-0">
+                            <i class="fa fa-info-circle me-1"/>
+                            Confirms the stay as a walk-in, reserves the room
+                            and opens the check-in registration. Deposit is
+                            recorded and deducted from the invoice at check-out.
+                        </p>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_confirm_walkin" type="object"
+                            string="Confirm &amp; Check In" class="btn-primary"
+                            data-hotkey="q"/>
+                    <button string="Cancel" class="btn-secondary"
+                            special="cancel" data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="hotel_walkin_wizard_action" model="ir.actions.act_window">
+        <field name="name">New Book Guest</field>
+        <field name="res_model">hotel.walkin.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Book Register report wizard -->
+    <record id="hotel_walkin_register_view_form" model="ir.ui.view">
+        <field name="name">hotel.walkin.register.wizard.form</field>
+        <field name="model">hotel.walkin.register.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Book Register">
+                <group>
+                    <group string="Period">
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                    </group>
+                    <group string="Note">
+                        <p class="text-muted mb-0">
+                            <i class="fa fa-info-circle me-1"/>
+                            Prints every walk-in reservation whose check-in
+                            falls inside the selected period, with room
+                            revenue totals.
+                        </p>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_print" type="object" string="Print"
+                            class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary"
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_walkin_register" model="ir.actions.act_window">
+        <field name="name">Book Register</field>
+        <field name="res_model">hotel.walkin.register.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

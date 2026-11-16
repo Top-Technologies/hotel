@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Room consumption search filter and action; product form tab removed
+         so standard non-hotel products do not display room consumption settings.
+         A simple 'Hotel Consumable' checkbox is available next to Can be Sold / POS. -->
+
+    <record id="product_template_form_view_hotel_consumable" model="ir.ui.view">
+        <field name="name">product.template.form.hotel.consumable</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='options']" position="inside">
+                <span class="d-inline-flex" groups="hotel.group_hotel_manager,hotel.group_general_manager">
+                    <field name="hotel_consumption_ok"/>
+                    <label for="hotel_consumption_ok" string="Hotel Consumable"/>
+                </span>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="hotel_consumption_product_action" model="ir.actions.act_window">
+        <field name="name">Consumption Products</field>
+        <field name="res_model">product.template</field>
+        <field name="view_mode">list,form,kanban</field>
+        <field name="domain">[('hotel_consumption_ok','=',True)]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Configure room consumption products</p>
+            <p>Use the standard Odoo products and configure for each one whether
+                it is offered to the guest, charged, or covered by a
+                complimentary allowance.</p>
+        </field>
+    </record>
+
+    <record id="product_template_search_view_hotel_consumption" model="ir.ui.view">
+        <field name="name">product.template.search.hotel.consumption</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_search_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='filter_to_sell']" position="after">
+                <filter name="filter_hotel_consumption" string="Allowed for Room Consumption"
+                        domain="[('hotel_consumption_ok','=',True)]"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

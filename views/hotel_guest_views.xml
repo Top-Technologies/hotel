@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="hotel_guest_view_list" model="ir.ui.view">
+        <field name="name">hotel.guest.list</field>
+        <field name="model">res.partner</field>
+        <field name="arch" type="xml">
+            <list string="Guests" multi_edit="0">
+                <header>
+                    <button name="hotel.hotel_reservation_book_action" string="Book"
+                            type="action" class="btn-primary"
+                            groups="hotel.group_receptionist"/>
+                    <button name="hotel.hotel_walkin_wizard_action" string="Walk-in"
+                            type="action" class="btn-secondary"
+                            groups="hotel.group_receptionist"/>
+                </header>
+                <field name="name"/>
+                <field name="is_walkin" string="Book"
+                       decoration-success="is_walkin"/>
+                <field name="phone" widget="phone"/>
+                <field name="email"/>
+                <field name="city" optional="show"/>
+                <field name="country_id" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="hotel_guest_view_search" model="ir.ui.view">
+        <field name="name">hotel.guest.search</field>
+        <field name="model">res.partner</field>
+        <field name="arch" type="xml">
+            <search string="Guests">
+                <field name="name"/>
+                <field name="phone"/>
+                <field name="email"/>
+                <field name="city"/>
+                <filter name="filter_all_walkin" string="Books"
+                        domain="[('is_walkin', '=', True)]"/>
+                <separator/>
+                <group name="group_by">
+                    <filter name="group_walkin" string="Book"
+                            context="{'group_by': 'is_walkin'}"/>
+                    <filter name="group_city" string="City"
+                            context="{'group_by': 'city'}"/>
+                    <filter name="group_country" string="Country"
+                            context="{'group_by': 'country_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="hotel_guest_action" model="ir.actions.act_window">
+        <field name="name">Guests</field>
+        <field name="res_model">res.partner</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('is_guest', '=', True)]</field>
+        <field name="view_id" ref="hotel_guest_view_list"/>
+        <field name="search_view_id" ref="hotel_guest_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No guest yet</p>
+            <p>Use <b>Book</b> to reserve a room under the guest's name for the
+                dates they want to stay. Use <b>Walk-in</b> to register a guest
+                arriving without a reservation: it creates the guest, books and
+                reserves a free room and opens the check-in screen. Guests are
+                reused across reservations.</p>
+        </field>
+    </record>
+
+    <!-- Walk-in marker and hotel fields on the partner form. -->
+    <record id="res_partner_view_form_walkin" model="ir.ui.view">
+        <field name="name">res.partner.form.hotel.walkin</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_open_reservations" type="object"
+                        class="oe_stat_button" icon="fa-bed"
+                        groups="hotel.group_hotel_user">
+                    <field name="reservation_count" widget="statinfo" string="Stays"/>
+                </button>
+                <button name="action_open_credit_approvals" type="object"
+                        class="oe_stat_button" icon="fa-credit-card"
+                        groups="hotel.group_finance_user"
+                        invisible="credit_approval_count == 0">
+                    <field name="credit_approval_count" widget="statinfo"
+                           string="Credit Requests"/>
+                </button>
+            </xpath>
+            <field name="category_id" position="before">
+                <field name="hotel_customer_type"
+                       groups="hotel.group_hotel_user"/>
+                <field name="gender"
+                       groups="hotel.group_hotel_user"/>
+                <field name="birth_date"
+                       groups="hotel.group_hotel_user"/>
+                <field name="nationality_id"
+                       groups="hotel.group_hotel_user"/>
+                <field name="is_guest" string="Hotel Guest"
+                       groups="hotel.group_hotel_user"/>
+                <field name="is_walkin" string="Book Guest"
+                       groups="hotel.group_hotel_user"/>
+            </field>
+        </field>
+    </record>
+
+    <!-- Let hotel staff tell guests from plain contacts in Contacts. -->
+    <record id="view_res_partner_filter_hotel" model="ir.ui.view">
+        <field name="name">res.partner.select.hotel</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_res_partner_filter"/>
+        <field name="arch" type="xml">
+            <filter name="type_person" position="before">
+                <filter name="hotel_guest" string="Hotel Guests"
+                        domain="[('is_guest', '=', True)]"
+                        groups="hotel.group_hotel_user"/>
+                <filter name="hotel_non_guest" string="Non-guest Contacts"
+                        domain="[('is_guest', '=', False)]"
+                        groups="hotel.group_hotel_user"/>
+            </filter>
+        </field>
+    </record>
+
+</odoo>

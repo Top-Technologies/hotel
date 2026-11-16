@@ -1,0 +1,1001 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Tight margins so the card starts near the top of the page. -->
+    <record id="paperformat_registration_card" model="report.paperformat">
+        <field name="name">Hotel Registration Card</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">8</field>
+        <field name="margin_bottom">8</field>
+        <field name="margin_left">8</field>
+        <field name="margin_right">8</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+        <field name="css_margins" eval="True"/>
+    </record>
+
+    <record id="action_print_registration_card" model="ir.actions.report">
+        <field name="name">Guest Registration Card</field>
+        <field name="model">hotel.reservation</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">hotel.report_registration_card</field>
+        <field name="report_file">hotel.report_registration_card</field>
+        <field name="print_report_name">'Registration Card - %s' % object.name</field>
+        <field name="paperformat_id" ref="paperformat_registration_card"/>
+        <field name="binding_model_id" ref="model_hotel_reservation"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <record id="action_print_folio" model="ir.actions.report">
+        <field name="name">Guest Folio</field>
+        <field name="model">hotel.reservation</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">hotel.report_guest_folio</field>
+        <field name="report_file">hotel.report_guest_folio</field>
+        <field name="print_report_name">'Folio - %s' % object.name</field>
+        <field name="binding_model_id" ref="model_hotel_reservation"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <record id="action_report_walkin_register" model="ir.actions.report">
+        <field name="name">Book Register</field>
+        <field name="model">hotel.reservation</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">hotel.report_walkin_register</field>
+        <field name="report_file">hotel.report_walkin_register</field>
+        <field name="print_report_name">'Book Register'</field>
+    </record>
+
+    <template id="report_registration_card_document">
+        <t t-call="web.basic_layout">
+            <t t-set="doc" t-value="doc.with_context(lang=doc.guest_id.lang)"/>
+            <t t-set="guest" t-value="doc.guest_id"/>
+            <div class="page hotel-registration-card"
+                 style="font-family: DejaVu Sans, Arial, sans-serif; font-size: 10pt; color: #000; line-height: 1.35; margin: 0; padding: 0;">
+                <style type="text/css">
+                    .article {
+                        margin: 0 !important;
+                        padding: 0 !important;
+                    }
+                    .hotel-registration-card {
+                        margin: 0 !important;
+                        padding: 0 !important;
+                    }
+                    .hotel-registration-card .rc-frame {
+                        padding: 0;
+                        box-sizing: border-box;
+                        width: 100%;
+                    }
+                    .hotel-registration-card .rc-rule {
+                        border-top: 2px solid #000;
+                        border-bottom: 2px solid #000;
+                        margin: 0 0 6px 0;
+                        padding: 2px 0;
+                    }
+                    .hotel-registration-card .rc-title {
+                        text-align: center;
+                        font-size: 16pt;
+                        font-weight: 700;
+                        letter-spacing: 1px;
+                        margin: 0;
+                        text-transform: uppercase;
+                    }
+                    .hotel-registration-card .rc-company {
+                        text-align: center;
+                        font-size: 9pt;
+                        margin: 2px 0 6px 0;
+                    }
+                    .hotel-registration-card .rc-section {
+                        border-top: 1px solid #000;
+                        border-bottom: 1px solid #000;
+                        text-align: center;
+                        font-weight: 700;
+                        font-size: 9pt;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                        margin: 8px 0 6px 0;
+                        padding: 3px 0;
+                    }
+                    .hotel-registration-card .rc-row {
+                        width: 100%;
+                        margin-bottom: 5px;
+                    }
+                    .hotel-registration-card .rc-row td {
+                        vertical-align: bottom;
+                        padding: 2px 4px 2px 0;
+                    }
+                    .hotel-registration-card .rc-label {
+                        white-space: nowrap;
+                        font-weight: 600;
+                        padding-right: 4px !important;
+                    }
+                    .hotel-registration-card .rc-line {
+                        min-height: 16px;
+                        width: 100%;
+                        display: inline-block;
+                        padding: 0 2px 1px 2px;
+                    }
+                    .hotel-registration-card .rc-line.rc-blank {
+                        border-bottom: 1px solid #000;
+                    }
+                    .hotel-registration-card .rc-field {
+                        width: 100%;
+                        border-collapse: collapse;
+                        table-layout: fixed;
+                        margin: 0 0 5px 0;
+                    }
+                    .hotel-registration-card .rc-field td {
+                        vertical-align: bottom;
+                        padding: 4px 4px 4px 0;
+                        font-size: 10pt;
+                    }
+                    .hotel-registration-card .rc-field .rc-label {
+                        white-space: nowrap;
+                        font-weight: 600;
+                        width: 1%;
+                        padding-right: 8px !important;
+                    }
+                    .hotel-registration-card .rc-field .rc-value {
+                        width: auto;
+                    }
+                    .hotel-registration-card .rc-field .rc-line {
+                        display: block;
+                        min-height: 18px;
+                        padding: 1px 4px 2px 4px;
+                        border-bottom: 1px solid #000;
+                        box-sizing: border-box;
+                    }
+                    .hotel-registration-card .rc-box {
+                        display: inline-block;
+                        width: 12px;
+                        height: 12px;
+                        border: 1px solid #000;
+                        margin: 0 3px 0 8px;
+                        vertical-align: middle;
+                    }
+                    .hotel-registration-card .rc-terms {
+                        font-size: 8.5pt;
+                        margin: 4px 0 0 0;
+                        padding-left: 16px;
+                    }
+                    .hotel-registration-card .rc-terms li {
+                        margin-bottom: 3px;
+                    }
+                    .hotel-registration-card .rc-footer-rule {
+                        border-top: 2px solid #000;
+                        margin-top: 8px;
+                        padding-top: 2px;
+                    }
+                </style>
+
+                <div class="rc-frame">
+                <div class="rc-rule">
+                    <p class="rc-title">Hotel Registration Card</p>
+                </div>
+                <p class="rc-company">
+                    <span t-esc="doc.company_id.name"/>
+                </p>
+
+                <table class="rc-row" style="width: 100%; table-layout: fixed;">
+                    <tr>
+                        <td class="rc-label" style="width: 28%;">Reservation / Folio No.:</td>
+                        <td style="width: 24%;"><span class="rc-line"><t t-esc="doc.name"/></span></td>
+                        <td class="rc-label" style="width: 18%;">Arrival Date:</td>
+                        <td style="width: 30%;">
+                            <span class="rc-line">
+                                <t t-if="doc.actual_checkin">
+                                    <span t-field="doc.actual_checkin" t-options="{'widget': 'date'}"/>
+                                </t>
+                                <t t-else="">
+                                    <span t-field="doc.checkin" t-options="{'widget': 'date'}"/>
+                                </t>
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="rc-label">Room Number:</td>
+                        <td><span class="rc-line"><t t-esc="doc.room_id.number or ''"/></span></td>
+                        <td class="rc-label">Departure Date:</td>
+                        <td>
+                            <span class="rc-line">
+                                <t t-if="doc.actual_checkout">
+                                    <span t-field="doc.actual_checkout" t-options="{'widget': 'date'}"/>
+                                </t>
+                                <t t-else="">
+                                    <span t-field="doc.checkout" t-options="{'widget': 'date'}"/>
+                                </t>
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="rc-label">Room Type:</td>
+                        <td><span class="rc-line"><t t-esc="doc.room_type_id.name or ''"/></span></td>
+                        <td class="rc-label">Room Rate:</td>
+                        <td>
+                            <span class="rc-line">
+                                <span t-field="doc.rate"
+                                      t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
+                                <t t-if="doc.discount">
+                                    (disc. <t t-esc="'%.0f' % doc.discount"/>%)
+                                </t>
+                            </span>
+                        </td>
+                    </tr>
+                </table>
+
+                <div class="rc-section">Guest Information</div>
+
+                <table class="rc-field">
+                    <tr>
+                        <td class="rc-label">Full Name (Title / First / Last):</td>
+                        <td class="rc-value" colspan="3">
+                            <span class="rc-line" style="text-align: center;">
+                                <t t-esc="guest.name or ''"/>&#160;
+                            </span>
+                        </td>
+                    </tr>
+                </table>
+                <table class="rc-field">
+                    <tr>
+                        <td class="rc-label" style="width: 18%;">Nationality:</td>
+                        <td class="rc-value" style="width: 32%;">
+                            <span class="rc-line">
+                                <t t-esc="(doc.nationality_id or guest.nationality_id or guest.country_id).name or ''"/>&#160;
+                            </span>
+                        </td>
+                        <td class="rc-label" style="width: 18%;">Date of Birth:</td>
+                        <td class="rc-value" style="width: 32%;">
+                            <span class="rc-line">
+                                <t t-if="guest.birth_date">
+                                    <span t-field="guest.birth_date"/>
+                                </t>
+                                &#160;
+                            </span>
+                        </td>
+                    </tr>
+                </table>
+                <table class="rc-field">
+                    <tr>
+                        <td class="rc-label" style="width: 22%;">ID / Passport Number:</td>
+                        <td class="rc-value" style="width: 28%;">
+                            <span class="rc-line">
+                                <t t-if="doc.id_type">
+                                    <span t-field="doc.id_type"/> —
+                                </t>
+                                <t t-esc="doc.id_number or ''"/>&#160;
+                            </span>
+                        </td>
+                        <td class="rc-label" style="width: 22%;">Date of Issue / Expiry:</td>
+                        <td class="rc-value" style="width: 28%;">
+                            <span class="rc-line">&#160;</span>
+                        </td>
+                    </tr>
+                </table>
+                <table class="rc-field">
+                    <tr>
+                        <td class="rc-label" style="width: 22%;">Residential Address:</td>
+                        <td class="rc-value" colspan="3">
+                            <span class="rc-line">
+                                <t t-esc="guest.street or ''"/>
+                                <t t-if="guest.street2">, <t t-esc="guest.street2"/></t>
+                                &#160;
+                            </span>
+                        </td>
+                    </tr>
+                </table>
+                <table class="rc-field">
+                    <tr>
+                        <td class="rc-label" style="width: 10%;">City:</td>
+                        <td class="rc-value" style="width: 30%;">
+                            <span class="rc-line"><t t-esc="guest.city or ''"/>&#160;</span>
+                        </td>
+                        <td class="rc-label" style="width: 18%;">State/Province:</td>
+                        <td class="rc-value" style="width: 20%;">
+                            <span class="rc-line"><t t-esc="guest.state_id.name or ''"/>&#160;</span>
+                        </td>
+                        <td class="rc-label" style="width: 12%;">Postal Code:</td>
+                        <td class="rc-value" style="width: 10%;">
+                            <span class="rc-line"><t t-esc="guest.zip or ''"/>&#160;</span>
+                        </td>
+                    </tr>
+                </table>
+                <table class="rc-field">
+                    <tr>
+                        <td class="rc-label" style="width: 12%;">Country:</td>
+                        <td class="rc-value" style="width: 30%;">
+                            <span class="rc-line"><t t-esc="guest.country_id.name or ''"/>&#160;</span>
+                        </td>
+                        <td class="rc-label" style="width: 18%;">Phone / Mobile:</td>
+                        <td class="rc-value" style="width: 40%;">
+                            <span class="rc-line">
+                                <t t-esc="doc.guest_phone or guest.phone or guest.mobile or ''"/>&#160;
+                            </span>
+                        </td>
+                    </tr>
+                </table>
+                <table class="rc-field">
+                    <tr>
+                        <td class="rc-label" style="width: 16%;">Email Address:</td>
+                        <td class="rc-value" colspan="3">
+                            <span class="rc-line"><t t-esc="guest.email or ''"/>&#160;</span>
+                        </td>
+                    </tr>
+                </table>
+                <table class="rc-field">
+                    <tr>
+                        <td class="rc-label" style="width: 36%;">Organization / Company (if corporate):</td>
+                        <td class="rc-value" colspan="3">
+                            <span class="rc-line">
+                                <t t-if="guest.is_company">
+                                    <t t-esc="guest.name"/>
+                                </t>
+                                <t t-elif="guest.parent_id">
+                                    <t t-esc="guest.parent_id.name"/>
+                                </t>
+                                &#160;
+                            </span>
+                        </td>
+                    </tr>
+                </table>
+
+                <div class="rc-section">Stay &amp; Vehicle Details</div>
+
+                <p style="margin: 0 0 6px 0;">
+                    <strong>Number of Guests:</strong>
+                    Adults: [
+                    <span style="display: inline-block; min-width: 28px; text-align: center;">
+                        <t t-esc="doc.adults"/>
+                    </span>
+                    ]
+                    &#160;&#160;Children: [
+                    <span style="display: inline-block; min-width: 28px; text-align: center;">
+                        <t t-esc="doc.children"/>
+                    </span>
+                    ]
+                </p>
+                <table class="rc-row" style="width: 100%; table-layout: fixed;">
+                    <tr>
+                        <td class="rc-label" style="width: 24%;">Vehicle Make / Model:</td>
+                        <td style="width: 30%;"><span class="rc-line rc-blank">&#160;</span></td>
+                        <td class="rc-label" style="width: 20%;">License Plate No.:</td>
+                        <td style="width: 26%;"><span class="rc-line rc-blank">&#160;</span></td>
+                    </tr>
+                    <tr>
+                        <td class="rc-label">Coming From:</td>
+                        <td><span class="rc-line rc-blank">&#160;</span></td>
+                        <td class="rc-label">Proceeding To:</td>
+                        <td><span class="rc-line rc-blank">&#160;</span></td>
+                    </tr>
+                </table>
+
+                <div class="rc-section">Payment Details</div>
+
+                <p style="margin: 0 0 6px 0;">
+                    <strong>Method of Payment:</strong>
+                    <span class="rc-box"/> Cash
+                    <span class="rc-box"/> Credit / Debit Card
+                    <span class="rc-box"/> Company Account
+                </p>
+                <p style="margin: 0 0 6px 0;">
+                    <strong>Card Type:</strong>
+                    <span class="rc-box"/> Visa
+                    <span class="rc-box"/> MasterCard
+                    <span class="rc-box"/> Amex
+                    <span class="rc-box"/> Other: <span class="rc-line rc-blank" style="width: 120px;">&#160;</span>
+                </p>
+                <table class="rc-row" style="width: 100%; table-layout: fixed;">
+                    <tr>
+                        <td class="rc-label" style="width: 38%;">Card Number (Last 4 Digits):</td>
+                        <td style="width: 32%;">
+                            <span class="rc-line rc-blank">**** **** **** ______</span>
+                        </td>
+                        <td class="rc-label" style="width: 10%;">Expiry:</td>
+                        <td style="width: 20%;"><span class="rc-line rc-blank">______ / ______</span></td>
+                    </tr>
+                    <tr>
+                        <td class="rc-label">Billing Address (if different):</td>
+                        <td colspan="3"><span class="rc-line rc-blank">&#160;</span></td>
+                    </tr>
+                </table>
+                <t t-if="doc.deposit">
+                    <p style="margin: 4px 0 0 0;">
+                        <strong>Deposit collected:</strong>
+                        <span t-field="doc.deposit"
+                              t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
+                    </p>
+                </t>
+
+                <div class="rc-section">Terms &amp; Conditions</div>
+                <ol class="rc-terms">
+                    <li>
+                        Check-in time is 2:00 PM; check-out time is 11:00 AM. Late check-out is
+                        subject to availability and additional charges.
+                    </li>
+                    <li>
+                        The hotel is not responsible for money, jewelry, or other valuables left
+                        in the room. Complimentary safety deposit boxes are available.
+                    </li>
+                    <li>
+                        This is a non-smoking property. A cleaning fee will apply for smoking in rooms.
+                    </li>
+                    <li>
+                        The guest agrees to be liable for all room charges, taxes, incidentals, and
+                        any damages caused to hotel property during the stay.
+                    </li>
+                </ol>
+
+                <table class="rc-row" style="width: 100%; table-layout: fixed; margin-top: 14px;">
+                    <tr>
+                        <td class="rc-label" style="width: 18%;">Guest Signature:</td>
+                        <td style="width: 42%;"><span class="rc-line rc-blank">&#160;</span></td>
+                        <td class="rc-label" style="width: 10%;">Date:</td>
+                        <td style="width: 30%;"><span class="rc-line rc-blank">&#160;</span></td>
+                    </tr>
+                </table>
+
+                <div class="rc-section">For Front Desk Use</div>
+                <table class="rc-row" style="width: 100%; table-layout: fixed;">
+                    <tr>
+                        <td class="rc-label" style="width: 22%;">Receptionist Name:</td>
+                        <td style="width: 30%;">
+                            <span class="rc-line"><t t-esc="env.user.name"/></span>
+                        </td>
+                        <td class="rc-label" style="width: 20%;">Key Card Issued:</td>
+                        <td style="width: 28%;">
+                            <span class="rc-box"/> Yes &#160; <span class="rc-box"/> No
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="rc-label">Clerk Signature:</td>
+                        <td><span class="rc-line rc-blank">&#160;</span></td>
+                        <td class="rc-label">Payment Pre-Auth:</td>
+                        <td><span class="rc-box"/> Approved</td>
+                    </tr>
+                </table>
+                <div class="rc-footer-rule"/>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <template id="report_guest_folio_document">
+        <t t-call="web.external_layout">
+            <t t-set="doc" t-value="doc.with_context(lang=doc.guest_id.lang)"/>
+            <div class="page">
+                <h2>GUEST FOLIO</h2>
+                <div class="row mt-2">
+                    <div class="col-6">
+                        <strong>Guest</strong>
+                        <span t-field="doc.guest_id.name"/>
+                    </div>
+                    <div class="col-6">
+                        <strong>Reservation</strong>
+                        <span t-field="doc.name"/>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-6">
+                        <strong>Room</strong>
+                        <span t-field="doc.room_id.number"/>
+                        (<span t-field="doc.room_type_id.name"/>)
+                    </div>
+                    <div class="col-6">
+                        <strong>Stay</strong>
+                        <span t-field="doc.checkin"/> → <span t-field="doc.checkout"/>
+                        (<span t-field="doc.billable_nights"/> night(s))
+                    </div>
+                </div>
+                <table class="table table-sm mt-4">
+                    <thead>
+                        <tr>
+                            <th>Description</th>
+                            <th class="text-end">Qty</th>
+                            <th class="text-end">Unit Price</th>
+                            <th class="text-end">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>
+                                <t t-esc="doc.room_type_id.name"/>
+                                (rate <span t-field="doc.rate"
+                                        t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
+                                <span t-if="doc.discount">, discount <span t-field="doc.discount"/>%</span>)
+                            </td>
+                            <td class="text-end"><span t-field="doc.billable_nights"/></td>
+                            <td class="text-end">
+                                <span t-field="doc.rate"
+                                      t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
+                            </td>
+                            <td class="text-end">
+                                <span t-field="doc.room_total"
+                                      t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
+                            </td>
+                        </tr>
+                        <tr t-foreach="doc.line_ids.filtered(lambda line: line.billable)" t-as="line">
+                            <td><span t-field="line.name"/></td>
+                            <td class="text-end"><span t-field="line.qty"/></td>
+                            <td class="text-end">
+                                <span t-field="line.price_unit"
+                                      t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
+                            </td>
+                            <td class="text-end">
+                                <span t-field="line.price_subtotal"
+                                      t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="3" class="text-end"><strong>Total (excl. tax)</strong></td>
+                            <td class="text-end">
+                                <span t-field="doc.total"
+                                      t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="3" class="text-end"><strong>Deposit deducted</strong></td>
+                            <td class="text-end">
+                                <span t-field="doc.deposit"
+                                      t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+                <div t-if="doc.invoice_ids" class="mt-4">
+                    <p>
+                        <strong>Invoices:</strong>
+                        <span t-foreach="doc.invoice_ids" t-as="invoice">
+                            <span t-field="invoice.name"/>
+                            <span t-field="invoice.amount_total"
+                                  t-options="{'widget': 'monetary', 'display_currency': invoice.currency_id}"/>
+                            (paid: <span t-field="invoice.amount_residual"
+                                          t-options="{'widget': 'monetary', 'display_currency': invoice.currency_id}"/>
+                            due)
+                            <span t-if="not invoice_last">, </span>
+                        </span>
+                    </p>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <template id="report_registration_card">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="hotel.report_registration_card_document"/>
+            </t>
+        </t>
+    </template>
+
+    <template id="report_guest_folio">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="hotel.report_guest_folio_document"/>
+            </t>
+        </t>
+    </template>
+
+    <template id="report_walkin_register_document">
+        <t t-call="web.external_layout">
+            <div class="page">
+                <h2>WALK-IN REGISTER</h2>
+                <p class="text-muted">
+                    Company: <strong><span t-field="docs[0].company_id.name"/></strong>
+                    — Book reservations from
+                    <strong><span t-field="docs[0].checkin"
+                                   t-options="{'widget': 'date'}"/></strong>
+                    to
+                    <strong><span t-field="docs[-1].checkin"
+                                   t-options="{'widget': 'date'}"/></strong>
+                </p>
+                <table class="table table-sm mt-3">
+                    <thead>
+                        <tr>
+                            <th>Reservation</th>
+                            <th>Guest</th>
+                            <th>Customer Type</th>
+                            <th>Room</th>
+                            <th>Check-in</th>
+                            <th>Check-out</th>
+                            <th class="text-end">Nights</th>
+                            <th class="text-end">Total</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr t-foreach="docs" t-as="doc">
+                            <td><span t-field="doc.name"/></td>
+                            <td><span t-field="doc.guest_id.name"/></td>
+                            <td>
+                                <span t-if="doc.guest_id.is_company">Corporate</span>
+                                <span t-else="">Individual</span>
+                            </td>
+                            <td><span t-field="doc.room_id.number"/></td>
+                            <td>
+                                <span t-field="doc.checkin"
+                                      t-options="{'widget': 'date'}"/>
+                            </td>
+                            <td>
+                                <span t-field="doc.checkout"
+                                      t-options="{'widget': 'date'}"/>
+                            </td>
+                            <td class="text-end"><span t-field="doc.billable_nights"/></td>
+                            <td class="text-end">
+                                <span t-field="doc.total"
+                                      t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
+                            </td>
+                            <td><span t-field="doc.state"/></td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="6" class="text-end"><strong>Total</strong></td>
+                            <td class="text-end">
+                                <strong><span t-esc="sum(docs.mapped('billable_nights'))"/></strong>
+                            </td>
+                            <td class="text-end">
+                                <strong><span t-esc="sum(docs.mapped('total'))"/></strong>
+                            </td>
+                            <td/>
+                        </tr>
+                    </tfoot>
+                </table>
+                <p class="text-muted mt-4">
+                    Generated on <span t-field="docs[0].company_id.create_date"
+                                       t-options="{'widget': 'datetime'}"/>.
+                </p>
+            </div>
+        </t>
+    </template>
+
+    <template id="report_walkin_register">
+        <t t-call="web.html_container">
+            <t t-call="hotel.report_walkin_register_document"/>
+        </t>
+    </template>
+
+    <!-- ============================================================
+         Guest property, safe deposit, custody and lost &amp; found
+         ============================================================ -->
+    <record id="action_report_guest_property" model="ir.actions.report">
+        <field name="name">Guest Property Card</field>
+        <field name="model">hotel.guest.property</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">hotel.report_guest_property</field>
+        <field name="report_file">hotel.report_guest_property</field>
+        <field name="print_report_name">'Property Card - %s' % object.name</field>
+        <field name="binding_model_id" ref="model_hotel_guest_property"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <record id="action_report_safe_deposit" model="ir.actions.report">
+        <field name="name">Safe Deposit Receipt</field>
+        <field name="model">hotel.safe.deposit</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">hotel.report_safe_deposit</field>
+        <field name="report_file">hotel.report_safe_deposit</field>
+        <field name="print_report_name">'Deposit Receipt - %s' % object.name</field>
+        <field name="binding_model_id" ref="model_hotel_safe_deposit"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <record id="action_report_property_custody" model="ir.actions.report">
+        <field name="name">Property Custody Log</field>
+        <field name="model">hotel.property.custody</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">hotel.report_property_custody</field>
+        <field name="report_file">hotel.report_property_custody</field>
+        <field name="print_report_name">'Custody Log - %s' % object.name</field>
+        <field name="binding_model_id" ref="model_hotel_property_custody"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <record id="action_report_lost_found" model="ir.actions.report">
+        <field name="name">Lost &amp; Found Report</field>
+        <field name="model">hotel.lost.found</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">hotel.report_lost_found</field>
+        <field name="report_file">hotel.report_lost_found</field>
+        <field name="print_report_name">'Lost &amp; Found - %s' % (object.name or 'Register')</field>
+        <field name="binding_model_id" ref="model_hotel_lost_found"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_guest_property_document">
+        <t t-call="web.external_layout">
+            <div class="page">
+                <h2>GUEST PROPERTY CARD</h2>
+                <div class="row mt-3">
+                    <div class="col-6">
+                        <strong>Reference</strong>
+                        <span t-field="doc.name"/>
+                    </div>
+                    <div class="col-6">
+                        <strong>Status</strong>
+                        <span t-field="doc.state"/>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-6">
+                        <strong>Guest</strong>
+                        <span t-field="doc.guest_id.name"/>
+                    </div>
+                    <div class="col-6">
+                        <strong>Room</strong>
+                        <span t-field="doc.room_id.number"/>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-6">
+                        <strong>Reservation</strong>
+                        <span t-field="doc.reservation_id.name"/>
+                    </div>
+                    <div class="col-6">
+                        <strong>Category</strong>
+                        <span t-field="doc.category_id.name"/>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-6">
+                        <strong>Item</strong>
+                        <span t-field="doc.description"/>
+                        (qty <span t-field="doc.quantity"/>)
+                    </div>
+                    <div class="col-6">
+                        <strong>Serial / ID</strong>
+                        <span t-field="doc.serial_number"/>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-6">
+                        <strong>Condition</strong>
+                        <span t-field="doc.condition"/>
+                    </div>
+                    <div class="col-6">
+                        <strong>Storage location</strong>
+                        <span t-field="doc.current_location_id.name"/>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-6">
+                        <strong>Received</strong>
+                        <span t-field="doc.received_date"/>
+                        by <span t-field="doc.received_by_id.name"/>
+                    </div>
+                    <div class="col-6">
+                        <strong>Expected return</strong>
+                        <span t-field="doc.expected_return_date"/>
+                    </div>
+                </div>
+                <t t-if="doc.returned_date">
+                    <div class="row mt-2">
+                        <div class="col-12">
+                            <strong>Returned</strong>
+                            <span t-field="doc.returned_date"/>
+                            to <span t-field="doc.returned_to"/>
+                            by <span t-field="doc.returned_by_id.name"/>
+                        </div>
+                    </div>
+                </t>
+                <t t-if="doc.notes">
+                    <p class="mt-3"><strong>Notes:</strong> <span t-field="doc.notes"/></p>
+                </t>
+                <h3 class="mt-4">Custody chain</h3>
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Action</th>
+                            <th>From</th>
+                            <th>To</th>
+                            <th>By</th>
+                            <th>Condition</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr t-foreach="doc.custody_ids.sorted(lambda c: (c.custody_date, c.id))"
+                            t-as="line">
+                            <td><span t-field="line.custody_date"/></td>
+                            <td><span t-field="line.action"/></td>
+                            <td><span t-field="line.from_location_id.name"/></td>
+                            <td><span t-field="line.to_location_id.name"/></td>
+                            <td><span t-field="line.user_id.name"/></td>
+                            <td><span t-field="line.condition"/></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p class="mt-4">
+                    Guest signature: .....................................
+                    Staff signature: .....................................
+                </p>
+            </div>
+        </t>
+    </template>
+
+    <template id="report_guest_property">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="hotel.report_guest_property_document"/>
+            </t>
+        </t>
+    </template>
+
+    <template id="report_safe_deposit_document">
+        <t t-call="web.external_layout">
+            <div class="page">
+                <h2>SAFE DEPOSIT RECEIPT</h2>
+                <div class="row mt-3">
+                    <div class="col-6">
+                        <strong>Reference</strong>
+                        <span t-field="doc.name"/>
+                    </div>
+                    <div class="col-6">
+                        <strong>Status</strong>
+                        <span t-field="doc.state"/>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-6">
+                        <strong>Guest</strong>
+                        <span t-field="doc.guest_id.name"/>
+                    </div>
+                    <div class="col-6">
+                        <strong>Room</strong>
+                        <span t-field="doc.room_id.number"/>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-6">
+                        <strong>Item</strong>
+                        <span t-field="doc.property_id.description"/>
+                        <span t-field="doc.property_id.name"/>
+                    </div>
+                    <div class="col-6">
+                        <strong>Storage location</strong>
+                        <span t-field="doc.location_id.name"/>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-6">
+                        <strong>Received on</strong>
+                        <span t-field="doc.received_date"/>
+                        by <span t-field="doc.received_by_id.name"/>
+                    </div>
+                    <div class="col-6">
+                        <strong>Released on</strong>
+                        <span t-field="doc.released_date"/>
+                        by <span t-field="doc.released_by_id.name"/>
+                    </div>
+                </div>
+                <p class="mt-4">
+                    The hotel holds the item described above in the indicated storage
+                    location and releases it only against the guest signature or an
+                    authorised representative.
+                </p>
+                <p class="mt-4">
+                    Guest signature: .....................................
+                    Staff signature: .....................................
+                </p>
+            </div>
+        </t>
+    </template>
+
+    <template id="report_safe_deposit">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="hotel.report_safe_deposit_document"/>
+            </t>
+        </t>
+    </template>
+
+    <template id="report_property_custody_document">
+        <t t-call="web.external_layout">
+            <div class="page">
+                <h2>PROPERTY CUSTODY LOG</h2>
+                <t t-foreach="docs" t-as="doc">
+                    <div class="row mt-3">
+                        <div class="col-6">
+                            <strong>Custody record</strong>
+                            <span t-field="doc.name"/>
+                        </div>
+                        <div class="col-6">
+                            <strong>Property</strong>
+                            <span t-field="doc.property_id.name"/>
+                            <span t-field="doc.property_id.description"/>
+                        </div>
+                    </div>
+                    <div class="row mt-2">
+                        <div class="col-6">
+                            <strong>Guest</strong>
+                            <span t-field="doc.property_id.guest_id.name"/>
+                        </div>
+                        <div class="col-6">
+                            <strong>Date</strong>
+                            <span t-field="doc.custody_date"/>
+                        </div>
+                    </div>
+                    <div class="row mt-2">
+                        <div class="col-6">
+                            <strong>Action</strong>
+                            <span t-field="doc.action"/>
+                        </div>
+                        <div class="col-6">
+                            <strong>Condition</strong>
+                            <span t-field="doc.condition"/>
+                        </div>
+                    </div>
+                    <div class="row mt-2">
+                        <div class="col-6">
+                            <strong>From</strong>
+                            <span t-field="doc.from_location_id.name"/>
+                            <span t-field="doc.from_user_id.name"/>
+                        </div>
+                        <div class="col-6">
+                            <strong>To</strong>
+                            <span t-field="doc.to_location_id.name"/>
+                            <span t-field="doc.to_user_id.name"/>
+                        </div>
+                    </div>
+                    <t t-if="doc.notes">
+                        <p class="mt-2"><span t-field="doc.notes"/></p>
+                    </t>
+                </t>
+                <p class="mt-4">
+                    Recorded by: .....................................
+                </p>
+            </div>
+        </t>
+    </template>
+
+    <template id="report_property_custody">
+        <t t-call="web.html_container">
+            <t t-call="hotel.report_property_custody_document"/>
+        </t>
+    </template>
+
+    <template id="report_lost_found_document">
+        <t t-call="web.external_layout">
+            <div class="page">
+                <h2>LOST &amp; FOUND REPORT</h2>
+                <table class="table table-sm mt-3">
+                    <thead>
+                        <tr>
+                            <th>Reference</th>
+                            <th>Item</th>
+                            <th>Type</th>
+                            <th>Found on</th>
+                            <th>Where</th>
+                            <th>Storage</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr t-foreach="docs" t-as="doc">
+                            <td><span t-field="doc.name"/></td>
+                            <td><span t-field="doc.description"/></td>
+                            <td><span t-field="doc.category_id.name"/></td>
+                            <td><span t-field="doc.found_date"/></td>
+                            <td>
+                                <span t-field="doc.found_location"/>
+                                <span t-field="doc.found_room_id.number"/>
+                            </td>
+                            <td><span t-field="doc.storage_location_id.name"/></td>
+                            <td><span t-field="doc.state"/></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </t>
+    </template>
+
+    <template id="report_lost_found">
+        <t t-call="web.html_container">
+            <t t-call="hotel.report_lost_found_document"/>
+        </t>
+    </template>
+
+</odoo>

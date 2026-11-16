@@ -1,0 +1,874 @@
+/* Hotel Reservations Dashboard Styles - Enhanced Modern Design */
+
+.hotel_reservations_dashboard {
+    /* Change this single value to restyle the dashboard background. */
+    --hotel-dashboard-bg: #eef2f7;
+    padding: 24px;
+    background: var(--hotel-dashboard-bg);
+    flex: 1 1 auto;
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.hotel_reservations_dashboard .dashboard-header {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    padding: 2rem;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+    border: 1px solid rgba(255,255,255,0.2);
+    backdrop-filter: blur(10px);
+}
+
+.hotel_reservations_dashboard .dashboard-header h2 {
+    color: #2c3e50;
+    font-weight: 700;
+    font-size: 2.5rem;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.hotel_reservations_dashboard .dashboard-header h2 i {
+    background: linear-gradient(45deg, #007bff, #0056b3);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: drop-shadow(0 2px 4px rgba(0,123,255,0.3));
+}
+
+/* Enhanced KPI Cards */
+.hotel_reservations_dashboard .kpi-card {
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    border: none;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.2);
+    overflow: hidden;
+    position: relative;
+}
+
+.hotel_reservations_dashboard .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #007bff, #28a745, #ffc107, #17a2b8);
+    opacity: 0.8;
+}
+
+.hotel_reservations_dashboard .kpi-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+}
+
+.hotel_reservations_dashboard .kpi-card:hover::before {
+    height: 6px;
+    opacity: 1;
+}
+
+.hotel_reservations_dashboard .kpi-icon {
+    width: 70px;
+    height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    position: relative;
+    overflow: hidden;
+}
+
+.hotel_reservations_dashboard .kpi-icon::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, rgba(255,255,255,0.8), rgba(255,255,255,0.2));
+    border-radius: 50%;
+    z-index: -1;
+}
+
+.hotel_reservations_dashboard .kpi-content h3 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #2c3e50;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.hotel_reservations_dashboard .kpi-change {
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+/* Enhanced Cards */
+.hotel_reservations_dashboard .card {
+    border: none;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.2);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+}
+
+.hotel_reservations_dashboard .card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.15);
+}
+
+.hotel_reservations_dashboard .card-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    font-weight: 700;
+    padding: 1.5rem;
+    position: relative;
+}
+
+.hotel_reservations_dashboard .card-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #007bff, #28a745, #ffc107, #dc3545);
+    opacity: 0.6;
+}
+
+.hotel_reservations_dashboard .card-header h6 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #2c3e50;
+}
+
+.hotel_reservations_dashboard .card-header h6 i {
+    opacity: 0.9;
+    font-size: 1.2em;
+    margin-right: 0.5rem;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+}
+
+/* Enhanced Room Status Cards */
+.hotel_reservations_dashboard .room-status-card {
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 12px;
+    padding: 1.5rem 1rem;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    border: 2px solid transparent;
+    position: relative;
+    overflow: hidden;
+}
+
+.hotel_reservations_dashboard .room-status-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(255,255,255,0.1));
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 0;
+}
+
+.hotel_reservations_dashboard .room-status-card:hover::before {
+    opacity: 1;
+}
+
+.hotel_reservations_dashboard .room-status-card:hover {
+    transform: translateY(-6px) scale(1.05);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.2);
+}
+
+.hotel_reservations_dashboard .room-status-card i {
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
+    position: relative;
+    z-index: 1;
+}
+
+.hotel_reservations_dashboard .room-status-card .status-label,
+.hotel_reservations_dashboard .room-status-card .status-count,
+.hotel_reservations_dashboard .room-status-card .status-percentage {
+    position: relative;
+    z-index: 1;
+}
+
+.hotel_reservations_dashboard .status-label {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #495057;
+}
+
+.hotel_reservations_dashboard .status-count {
+    font-weight: 800;
+    font-size: 1.8rem;
+    color: #2c3e50;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.hotel_reservations_dashboard .status-percentage {
+    font-size: 0.9rem;
+    font-weight: 600;
+    opacity: 0.8;
+}
+
+/* Enhanced Front Desk Items */
+.hotel_reservations_dashboard .front-desk-operations {
+    padding: 0.5rem 0;
+}
+
+.hotel_reservations_dashboard .operation-item {
+    cursor: pointer;
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border: 1px solid rgba(0,0,0,0.05);
+    position: relative;
+    overflow: hidden;
+}
+
+.hotel_reservations_dashboard .operation-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
+    transition: left 0.5s ease;
+}
+
+.hotel_reservations_dashboard .operation-item:hover::before {
+    left: 100%;
+}
+
+.hotel_reservations_dashboard .operation-item:hover {
+    transform: translateX(8px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+}
+
+/* Enhanced Occupancy Donut */
+.hotel_reservations_dashboard .occupancy-donut {
+    position: relative;
+    display: inline-block;
+    padding: 1rem;
+}
+
+.hotel_reservations_dashboard .donut-chart {
+    width: 160px;
+    height: 160px;
+    position: relative;
+    transform: rotate(0deg);
+    filter: drop-shadow(0 4px 12px rgba(0,123,255,0.3));
+}
+
+.hotel_reservations_dashboard .occupancy-progress {
+    transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hotel_reservations_dashboard .occupancy-percentage-text {
+    font-size: 24px;
+    font-weight: 800;
+    fill: #007bff;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.hotel_reservations_dashboard .occupancy-label-text {
+    font-size: 12px;
+    font-weight: 600;
+    fill: #6c757d;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.hotel_reservations_dashboard .occupancy-percentage {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(90deg);
+    font-size: 2rem;
+    font-weight: 800;
+    color: #007bff;
+    text-shadow: 0 2px 4px rgba(0,123,255,0.3);
+}
+
+/* Enhanced Chart Styles */
+.hotel_reservations_dashboard .chart-container {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin: 1rem 0;
+}
+
+.hotel_reservations_dashboard .chart-bars {
+    height: 220px;
+    padding: 10px 10px 0 10px;
+    display: flex;
+    align-items: end;
+    justify-content: space-around;
+    gap: 4px;
+    background: linear-gradient(to top, rgba(0,123,255,0.03) 0%, transparent 100%);
+    border-radius: 8px;
+    position: relative;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.hotel_reservations_dashboard .chart-bars::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #dee2e6, transparent);
+}
+
+.hotel_reservations_dashboard .chart-bar-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 0 0 28px;
+    min-width: 28px;
+    position: relative;
+}
+
+.hotel_reservations_dashboard .bar-container {
+    display: flex;
+    align-items: end;
+    height: 180px;
+    gap: 2px;
+    width: 100%;
+    justify-content: center;
+}
+
+.hotel_reservations_dashboard .chart-bar {
+    width: 9px;
+    border-radius: 3px 3px 0 0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    position: relative;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.hotel_reservations_dashboard .chart-bar:hover {
+    transform: scale(1.1);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+}
+
+.hotel_reservations_dashboard .chart-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(to top, rgba(255,255,255,0), rgba(255,255,255,0.3));
+    border-radius: 6px 6px 0 0;
+}
+
+/* Enhanced Bar Colors with Gradients */
+.hotel_reservations_dashboard .bar-reservations {
+    background: linear-gradient(to top, #0056b3, #007bff);
+}
+
+.hotel_reservations_dashboard .bar-arrivals {
+    background: linear-gradient(to top, #1e7e34, #28a745);
+}
+
+.hotel_reservations_dashboard .bar-departures {
+    background: linear-gradient(to top, #d39e00, #ffc107);
+}
+
+.hotel_reservations_dashboard .revenue-bar-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 0 0 28px;
+    min-width: 28px;
+    min-height: 100%;
+}
+
+.hotel_reservations_dashboard .revenue-bar-container {
+    display: flex;
+    align-items: end;
+    height: 170px;
+    width: 100%;
+    justify-content: center;
+}
+
+.hotel_reservations_dashboard .revenue-bar {
+    width: 20px;
+    border-radius: 4px 4px 0 0;
+    background: linear-gradient(to top, #1e7e34, #28a745);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    position: relative;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.hotel_reservations_dashboard .revenue-bar:hover {
+    transform: scale(1.1);
+    box-shadow: 0 8px 16px rgba(40,167,69,0.3);
+}
+
+.hotel_reservations_dashboard .chart-label {
+    font-size: 0.7rem;
+    text-align: center;
+    width: 100%;
+    margin-top: 6px;
+    color: #6c757d;
+    font-weight: 500;
+    writing-mode: horizontal-tb;
+    word-break: break-word;
+}
+
+.hotel_reservations_dashboard .revenue-value {
+    font-size: 0.6rem;
+    text-align: center;
+    margin-top: 2px;
+    color: #6c757d;
+}
+
+/* Enhanced Chart Legend */
+.hotel_reservations_dashboard .chart-legend {
+    padding: 1rem;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-top: 1rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.hotel_reservations_dashboard .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #495057;
+}
+
+.hotel_reservations_dashboard .legend-color {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Enhanced Recent Reservations Table */
+.hotel_reservations_dashboard .table-responsive {
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+}
+
+.hotel_reservations_dashboard .table {
+    margin: 0;
+}
+
+.hotel_reservations_dashboard .table thead th {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: none;
+    font-weight: 700;
+    color: #495057;
+    padding: 1rem 1.5rem;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.hotel_reservations_dashboard .table tbody tr {
+    transition: all 0.3s ease;
+    border: none;
+}
+
+.hotel_reservations_dashboard .table tbody tr:hover {
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    transform: scale(1.01);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.hotel_reservations_dashboard .table tbody td {
+    border: none;
+    padding: 1rem 1.5rem;
+    vertical-align: middle;
+}
+
+/* Enhanced Operational Alerts */
+.hotel_reservations_dashboard .alert {
+    border: none;
+    border-radius: 12px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 0.75rem;
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+    border-left: 4px solid;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hotel_reservations_dashboard .alert::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(255,255,255,0.1));
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.hotel_reservations_dashboard .alert:hover {
+    transform: translateX(8px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+}
+
+.hotel_reservations_dashboard .alert:hover::before {
+    opacity: 1;
+}
+
+.hotel_reservations_dashboard .alert-danger {
+    background: linear-gradient(135deg, rgba(220,53,69,0.1), rgba(220,53,69,0.05));
+    border-left-color: #dc3545;
+    color: #721c24;
+}
+
+.hotel_reservations_dashboard .alert-warning {
+    background: linear-gradient(135deg, rgba(255,193,7,0.1), rgba(255,193,7,0.05));
+    border-left-color: #ffc107;
+    color: #856404;
+}
+
+.hotel_reservations_dashboard .alert-info {
+    background: linear-gradient(135deg, rgba(23,162,184,0.1), rgba(23,162,184,0.05));
+    border-left-color: #17a2b8;
+    color: #0c5460;
+}
+
+/* Enhanced Badges */
+.hotel_reservations_dashboard .badge {
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    position: relative;
+    overflow: hidden;
+}
+
+.hotel_reservations_dashboard .badge::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    transition: left 0.5s ease;
+}
+
+.hotel_reservations_dashboard .badge:hover::before {
+    left: 100%;
+}
+
+/* Enhanced Font Awesome Icons */
+.hotel_reservations_dashboard .fa {
+    font-family: 'FontAwesome' !important;
+    font-style: normal !important;
+    font-weight: normal !important;
+    line-height: 1 !important;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.hotel_reservations_dashboard .fa-chevron-right::before {
+    content: "\f054" !important;
+}
+
+.hotel_reservations_dashboard .fa-chevron-left::before {
+    content: "\f053" !important;
+}
+
+/* Ensure icons display properly in tables */
+.hotel_reservations_dashboard .table .fa {
+    font-size: 0.875rem;
+    opacity: 0.7;
+    transition: opacity 0.3s ease;
+}
+
+.hotel_reservations_dashboard .table tr:hover .fa {
+    opacity: 1;
+}
+.hotel_reservations_dashboard .spinner-border {
+    width: 4rem;
+    height: 4rem;
+    border-width: 4px;
+}
+
+/* Enhanced Icon Colors */
+.hotel_reservations_dashboard .card-header .fa-percentage { 
+    color: #007bff !important; 
+    background: linear-gradient(45deg, #007bff, #0056b3);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.hotel_reservations_dashboard .card-header .fa-bed { 
+    color: #17a2b8 !important;
+    background: linear-gradient(45deg, #17a2b8, #117a8b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.hotel_reservations_dashboard .card-header .fa-line-chart { 
+    color: #28a745 !important;
+    background: linear-gradient(45deg, #28a745, #1e7e34);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.hotel_reservations_dashboard .card-header .fa-money { 
+    color: #ffc107 !important;
+    background: linear-gradient(45deg, #ffc107, #d39e00);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.hotel_reservations_dashboard .card-header .fa-desktop { 
+    color: #17a2b8 !important;
+    background: linear-gradient(45deg, #17a2b8, #117a8b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.hotel_reservations_dashboard .card-header .fa-calendar-o { 
+    color: #007bff !important;
+    background: linear-gradient(45deg, #007bff, #0056b3);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.hotel_reservations_dashboard .card-header .fa-exclamation-triangle { 
+    color: #dc3545 !important;
+    background: linear-gradient(45deg, #dc3545, #c82333);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.hotel_reservations_dashboard .card-header .fa-tachometer { 
+    color: #007bff !important;
+    background: linear-gradient(45deg, #007bff, #0056b3);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* Enhanced Responsive Design */
+@media (max-width: 768px) {
+    .hotel_reservations_dashboard {
+        padding: 16px;
+    }
+    
+    .hotel_reservations_dashboard .dashboard-header {
+        padding: 1.5rem;
+    }
+    
+    .hotel_reservations_dashboard .dashboard-header h2 {
+        font-size: 2rem;
+    }
+    
+    .hotel_reservations_dashboard .kpi-icon {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .hotel_reservations_dashboard .kpi-content h3 {
+        font-size: 2rem;
+    }
+    
+    .hotel_reservations_dashboard .chart-bars {
+        height: 150px;
+        padding: 0 8px;
+    }
+    
+    .hotel_reservations_dashboard .bar-container {
+        height: 120px;
+    }
+    
+    .hotel_reservations_dashboard .chart-legend {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+}
+
+/* Smooth Animations */
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.hotel_reservations_dashboard .dashboard-content > .row {
+    animation: slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.hotel_reservations_dashboard .dashboard-content > .row:nth-child(1) { animation-delay: 0.1s; }
+.hotel_reservations_dashboard .dashboard-content > .row:nth-child(2) { animation-delay: 0.2s; }
+.hotel_reservations_dashboard .dashboard-content > .row:nth-child(3) { animation-delay: 0.3s; }
+.hotel_reservations_dashboard .dashboard-content > .row:nth-child(4) { animation-delay: 0.4s; }
+.hotel_reservations_dashboard .dashboard-content > .row:nth-child(5) { animation-delay: 0.5s; }
+
+/* Chart Bar Animation */
+@keyframes growBar {
+    from {
+        height: 5px;
+        opacity: 0.5;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.hotel_reservations_dashboard .animate-bar {
+    animation: growBar 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* KPI Counter Animation */
+@keyframes countUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.hotel_reservations_dashboard .kpi-content h3 {
+    animation: countUp 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Pulse effect for important numbers */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.hotel_reservations_dashboard .status-count {
+    animation: pulse 2s ease-in-out infinite;
+}
+
+/* Glow effect for alerts */
+@keyframes glow {
+    0%, 100% { box-shadow: 0 0 5px rgba(220, 53, 69, 0.3); }
+    50% { box-shadow: 0 0 20px rgba(220, 53, 69, 0.6); }
+}
+
+.hotel_reservations_dashboard .alert-danger {
+    animation: glow 3s ease-in-out infinite;
+}
+
+/* Enhanced hover animations */
+@keyframes shimmer {
+    0% { background-position: -200px 0; }
+    100% { background-position: 200px 0; }
+}
+
+.hotel_reservations_dashboard .operation-item::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    background-size: 200px 100%;
+    animation: shimmer 2s infinite;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.hotel_reservations_dashboard .operation-item:hover::after {
+    opacity: 1;
+}
+
+/* Loading spinner enhancement */
+.hotel_reservations_dashboard .spinner-border {
+    background: linear-gradient(45deg, #007bff, #28a745, #ffc107, #dc3545);
+    border-radius: 50%;
+    position: relative;
+}
+
+.hotel_reservations_dashboard .spinner-border::before {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    background: white;
+    border-radius: 50%;
+}
+
+/* Chart tooltips */
+.hotel_reservations_dashboard .chart-bar[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.9);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    z-index: 1000;
+    margin-bottom: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.hotel_reservations_dashboard .chart-bar[title]:hover::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: rgba(0,0,0,0.9);
+    z-index: 1000;
+    margin-bottom: 2px;
+}
+
+/* Status-specific room card colors */
+.hotel_reservations_dashboard .status-available { border-color: #28a745 !important; }
+.hotel_reservations_dashboard .status-occupied { border-color: #007bff !important; }
+.hotel_reservations_dashboard .status-dirty { border-color: #ffc107 !important; }
+.hotel_reservations_dashboard .status-maintenance { border-color: #dc3545 !important; }

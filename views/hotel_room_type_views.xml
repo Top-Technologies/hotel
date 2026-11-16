@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Amenities -->
+    <record id="hotel_amenity_view_list" model="ir.ui.view">
+        <field name="name">hotel.amenity.list</field>
+        <field name="model">hotel.amenity</field>
+        <field name="arch" type="xml">
+            <list string="Amenities" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="hotel_amenity_view_form" model="ir.ui.view">
+        <field name="name">hotel.amenity.form</field>
+        <field name="model">hotel.amenity</field>
+        <field name="arch" type="xml">
+            <form string="Amenity">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="e.g. Air Conditioning"/></h1>
+                    </div>
+                    <group>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="hotel_amenity_action" model="ir.actions.act_window">
+        <field name="name">Amenities</field>
+        <field name="res_model">hotel.amenity</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Room Types -->
+    <record id="hotel_room_type_view_list" model="ir.ui.view">
+        <field name="name">hotel.room.type.list</field>
+        <field name="model">hotel.room.type</field>
+        <field name="arch" type="xml">
+            <list string="Room Types">
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="capacity"/>
+                <field name="base_price" sum="Base Rates"/>
+                <field name="product_id" optional="show"/>
+                <field name="income_account_id" optional="hide"/>
+                <field name="analytic_account_id" optional="show"/>
+                <field name="company_id" groups="base.group_multi_company" optional="show"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="hotel_room_type_view_form" model="ir.ui.view">
+        <field name="name">hotel.room.type.form</field>
+        <field name="model">hotel.room.type</field>
+        <field name="arch" type="xml">
+            <form string="Room Type" class="o_hotel_form">
+                <sheet>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger"
+                            invisible="active"/>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="e.g. Double"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="code"/>
+                            <field name="sequence"/>
+                            <field name="capacity"/>
+                            <field name="child_capacity"/>
+                            <field name="base_price"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="active"/>
+                            <field name="company_id" groups="base.group_multi_company" options="{'no_create': True}"/>
+                        </group>
+                        <group string="Accounting &amp; Billing">
+                            <field name="product_id"
+                                   help="Sellable service product invoiced for room revenue."/>
+                            <field name="income_account_id"
+                                   options="{'no_create': True}"
+                                   help="Specific income account for this room type. If unset, uses the product or default hotel income account."/>
+                            <field name="tax_ids" widget="many2many_tags"
+                                   options="{'no_create': True}"
+                                   help="Customer taxes applied to this room type. If unset, uses the product or default hotel taxes."/>
+                            <field name="analytic_account_id"
+                                   help="Analytic account tagged on room revenue lines."/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Standard Consumables">
+                            <field name="consumable_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="product_id" domain="[('sale_ok','=',True)]"/>
+                                    <field name="standard_qty" string="Room Qty"/>
+                                    <field name="policy" string="Policy"/>
+                                    <field name="allowance_qty" string="Free Allowance Qty" optional="show"/>
+                                    <field name="allowance_price" string="Excess Unit Price" optional="show"/>
+                                    <field name="allowance_scope" string="Scope" optional="show"/>
+                                    <field name="uom_id" optional="hide"/>
+                                    <field name="included_in_setup" optional="hide"/>
+                                    <field name="charge_excess" optional="hide"/>
+                                    <field name="turnover_policy" optional="hide"/>
+                                    <field name="active" widget="boolean_toggle" optional="hide"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Amenities">
+                            <field name="amenity_ids" widget="many2many_tags"/>
+                        </page>
+                        <page string="Description">
+                            <field name="note"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="hotel_room_type_view_search" model="ir.ui.view">
+        <field name="name">hotel.room.type.search</field>
+        <field name="model">hotel.room.type</field>
+        <field name="arch" type="xml">
+            <search string="Room Types">
+                <field name="name"/>
+                <field name="code"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <filter name="archived" string="Archived" domain="[('active', '=', False)]"/>
+                <group name="group_by">
+                    <filter string="Active" name="group_active" context="{'group_by': 'active'}"/>
+                    <filter string="Company" name="group_company" context="{'group_by': 'company_id'}" groups="base.group_multi_company"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="hotel_room_type_action" model="ir.actions.act_window">
+        <field name="name">Room Types</field>
+        <field name="res_model">hotel.room.type</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="hotel_room_type_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Create the room types sold by the hotel</p>
+            <p>Each room type carries the base nightly rate, the sellable product invoiced for
+                room revenue and the analytic account used to report rooms separately from
+                food and bar.</p>
+        </field>
+    </record>
+
+    <!-- Room consumable configuration -->
+    <record id="hotel_room_consumable_view_list" model="ir.ui.view">
+        <field name="name">hotel.room.consumable.list</field>
+        <field name="model">hotel.room.consumable</field>
+        <field name="arch" type="xml">
+            <list string="Room Consumables" editable="bottom">
+                <field name="room_type_id"/>
+                <field name="room_id" optional="hide"/>
+                <field name="sequence" widget="handle"/>
+                <field name="product_id" domain="[('sale_ok','=',True)]"/>
+                <field name="standard_qty" string="Room Qty"/>
+                <field name="policy" string="Policy"/>
+                <field name="allowance_qty" string="Free Allowance Qty" optional="show"/>
+                <field name="allowance_price" string="Excess Unit Price" optional="show"/>
+                <field name="allowance_scope" string="Scope" optional="show"/>
+                <field name="location_id" optional="show"/>
+                <field name="product_type" optional="hide"/>
+                <field name="uom_id" optional="hide"/>
+                <field name="included_in_setup" optional="hide"/>
+                <field name="charge_excess" optional="hide"/>
+                <field name="turnover_policy" optional="hide"/>
+                <field name="active" widget="boolean_toggle" optional="show"/>
+            </list>
+        </field>
+    </record>
+    <record id="hotel_room_consumable_view_form" model="ir.ui.view">
+        <field name="name">hotel.room.consumable.form</field>
+        <field name="model">hotel.room.consumable</field>
+        <field name="arch" type="xml">
+            <form string="Room Consumable">
+                <sheet>
+                    <group>
+                        <group string="Product &amp; Location">
+                            <field name="product_id" domain="[('sale_ok','=',True)]"/>
+                            <field name="product_type"/>
+                            <field name="uom_id"/>
+                            <field name="room_type_id"/>
+                            <field name="room_id"/>
+                            <field name="location_id"/>
+                            <field name="active"/>
+                            <field name="company_id" groups="base.group_multi_company" options="{'no_create': True}"/>
+                        </group>
+                        <group string="Allowance &amp; Pricing">
+                            <field name="standard_qty" string="Initial Quantity"/>
+                            <field name="allowance_qty" string="Complimentary Quantity"/>
+                            <field name="allowance_price" string="Chargeable Unit Price"/>
+                            <field name="policy"/>
+                            <field name="allowance_scope" invisible="policy != 'allowance'"/>
+                            <field name="charge_excess" invisible="policy != 'allowance'"/>
+                            <field name="turnover_policy"/>
+                            <field name="included_in_setup"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="hotel_room_consumable_action" model="ir.actions.act_window">
+        <field name="name">Room Consumables</field>
+        <field name="res_model">hotel.room.consumable</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Configure room consumable products and rules</p>
+            <p>Set up consumable products, complimentary allowances, chargeable unit prices, and storeroom inventory locations for each room type.</p>
+        </field>
+    </record>
+
+</odoo>

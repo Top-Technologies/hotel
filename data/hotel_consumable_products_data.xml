@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Product Categories -->
+        <record id="product_category_minibar" model="product.category">
+            <field name="name">Minibar Products</field>
+        </record>
+        <record id="product_category_guest_amenities" model="product.category">
+            <field name="name">Guest Amenities</field>
+        </record>
+        <record id="product_category_housekeeping_supplies" model="product.category">
+            <field name="name">Housekeeping Supplies</field>
+        </record>
+        <record id="product_category_laundry" model="product.category">
+            <field name="name">Laundry Services</field>
+        </record>
+
+        <!-- COMPLIMENTARY: Welcome Mineral Water -->
+        <record id="product_welcome_water" model="product.template">
+            <field name="name">Welcome Mineral Water (500ml)</field>
+            <field name="categ_id" ref="product_category_guest_amenities"/>
+            <field name="type">consu</field>
+            <field name="is_storable" eval="True"/>
+            <field name="sale_ok" eval="True"/>
+            <field name="purchase_ok" eval="True"/>
+            <field name="list_price">0.00</field>
+            <field name="standard_price">20.00</field>
+            <field name="hotel_consumption_ok" eval="True"/>
+            <field name="hotel_consumption_policy">complimentary</field>
+            <field name="default_code">AMEN-WATER-01</field>
+            <field name="description_picking">Complimentary guest arrival water. Do not charge.</field>
+        </record>
+
+        <!-- COMPLIMENTARY: Tea and Coffee Sachets -->
+        <record id="product_tea_coffee" model="product.template">
+            <field name="name">Tea and Coffee Sachets (Set)</field>
+            <field name="categ_id" ref="product_category_guest_amenities"/>
+            <field name="type">consu</field>
+            <field name="is_storable" eval="True"/>
+            <field name="sale_ok" eval="True"/>
+            <field name="purchase_ok" eval="True"/>
+            <field name="list_price">0.00</field>
+            <field name="standard_price">15.00</field>
+            <field name="hotel_consumption_ok" eval="True"/>
+            <field name="hotel_consumption_policy">complimentary</field>
+            <field name="default_code">AMEN-TCOFFEE-01</field>
+            <field name="description_picking">Complimentary daily tea/coffee. Do not charge.</field>
+        </record>
+
+        <!-- COMPLIMENTARY: Bath Soap -->
+        <record id="product_bath_soap" model="product.template">
+            <field name="name">Bath Soap (50g)</field>
+            <field name="categ_id" ref="product_category_housekeeping_supplies"/>
+            <field name="type">consu</field>
+            <field name="is_storable" eval="True"/>
+            <field name="sale_ok" eval="True"/>
+            <field name="purchase_ok" eval="True"/>
+            <field name="list_price">0.00</field>
+            <field name="standard_price">12.00</field>
+            <field name="hotel_consumption_ok" eval="True"/>
+            <field name="hotel_consumption_policy">complimentary</field>
+            <field name="default_code">HK-SOAP-01</field>
+        </record>
+
+        <!-- COMPLIMENTARY: Shampoo Sachet -->
+        <record id="product_shampoo" model="product.template">
+            <field name="name">Shampoo Sachet (30ml)</field>
+            <field name="categ_id" ref="product_category_housekeeping_supplies"/>
+            <field name="type">consu</field>
+            <field name="is_storable" eval="True"/>
+            <field name="sale_ok" eval="True"/>
+            <field name="purchase_ok" eval="True"/>
+            <field name="list_price">0.00</field>
+            <field name="standard_price">10.00</field>
+            <field name="hotel_consumption_ok" eval="True"/>
+            <field name="hotel_consumption_policy">complimentary</field>
+            <field name="default_code">HK-SHAMP-01</field>
+        </record>
+
+        <!-- COMPLIMENTARY: Body Lotion -->
+        <record id="product_body_lotion" model="product.template">
+            <field name="name">Body Lotion (30ml)</field>
+            <field name="categ_id" ref="product_category_housekeeping_supplies"/>
+            <field name="type">consu</field>
+            <field name="is_storable" eval="True"/>
+            <field name="sale_ok" eval="True"/>
+            <field name="purchase_ok" eval="True"/>
+            <field name="list_price">0.00</field>
+            <field name="standard_price">18.00</field>
+            <field name="hotel_consumption_ok" eval="True"/>
+            <field name="hotel_consumption_policy">complimentary</field>
+            <field name="default_code">HK-LOTION-01</field>
+        </record>
+
+        <!-- ALLOWANCE: Guest Slippers (2 per stay, free excess) -->
+        <record id="product_slippers" model="product.template">
+            <field name="name">Guest Slippers (Pair)</field>
+            <field name="categ_id" ref="product_category_guest_amenities"/>
+            <field name="type">consu</field>
+            <field name="is_storable" eval="True"/>
+            <field name="sale_ok" eval="True"/>
+            <field name="purchase_ok" eval="True"/>
+            <field name="list_price">80.00</field>
+            <field name="standard_price">35.00</field>
+            <field name="hotel_consumption_ok" eval="True"/>
+            <field name="hotel_consumption_policy">allowance</field>
+            <field name="hotel_allowance_qty">2.0</field>
+            <field name="hotel_allowance_scope">stay</field>
+            <field name="hotel_allowance_charge_excess" eval="False"/>
+            <field name="default_code">AMEN-SLIP-01</field>
+        </record>
+
+        <!-- ALLOWANCE: Bath Towel Set (2 per stay, charge excess) -->
+        <record id="product_bath_towel" model="product.template">
+            <field name="name">Bath Towel (Set of 2)</field>
+            <field name="categ_id" ref="product_category_housekeeping_supplies"/>
+            <field name="type">consu</field>
+            <field name="is_storable" eval="True"/>
+            <field name="sale_ok" eval="True"/>
+            <field name="purchase_ok" eval="True"/>
+            <field name="list_price">150.00</field>
+            <field name="standard_price">80.00</field>
+            <field name="hotel_consumption_ok" eval="True"/>
+            <field name="hotel_consumption_policy">allowance</field>
+            <field name="hotel_allowance_qty">2.0</field>
+            <field name="hotel_allowance_scope">stay</field>
+            <field name="hotel_allowance_charge_excess" eval="True"/>
+            <field name="hotel_allowance_price">120.00</field>
+            <field name="default_code">HK-TOWEL-01</field>
+            <field name="description_picking">2 per stay free. Charge for extra or damaged towels.</field>
+        </record>
+
+        <!-- ALLOWANCE: Guest Bathrobe (1 per stay, charge if taken/damaged) -->
+        <record id="product_bathrobe" model="product.template">
+            <field name="name">Guest Bathrobe</field>
+            <field name="categ_id" ref="product_category_housekeeping_supplies"/>
+            <field name="type">consu</field>
+            <field name="is_storable" eval="True"/>
+            <field name="sale_ok" eval="True"/>
+            <field name="purchase_ok" eval="True"/>
+            <field name="list_price">350.00</field>
+            <field name="standard_price">200.00</field>
+            <field name="hotel_consumption_ok" eval="True"/>
+            <field name="hotel_consumption_policy">allowance</field>
+            <field name="hotel_allowance_qty">1.0</field>
+            <field name="hotel_allowance_scope">stay</field>
+            <field name="hotel_allowance_charge_excess" eval="True"/>
+            <field name="hotel_allowance_price">350.00</field>
+            <field name="default_code">HK-ROBE-01</field>
+        </record>
+
+        <!-- CHARGEABLE: Minibar Water -->
+        <record id="product_minibar_water" model="product.template">
+            <field name="name">Minibar Water (500ml)</field>
+            <field name="categ_id" ref="product_category_minibar"/>
+            <field name="type">consu</field>
+            <field name="is_storable" eval="True"/>
+            <field name="sale_ok" eval="True"/>
+            <field name="purchase_ok" eval="True"/>
+            <field name="list_price">50.00</field>
+            <field name="standard_price">15.00</field>
+            <field name="hotel_consumption_ok" eval="True"/>
+            <field name="hotel_consumption_policy">chargeable</field>
+            <field name="default_code">MB-WATER-01</field>
+        </record>
+
+        <!-- CHARGEABLE: Minibar Soda / Juice -->
+        <record id="product_minibar_soda" model="product.template">
+            <field name="name">Minibar Soda / Juice (330ml)</field>
+            <field name="categ_id" ref="product_category_minibar"/>
+            <field name="type">consu</field>
+            <field name="is_storable" eval="True"/>
+            <field name="sale_ok" eval="True"/>
+            <field name="purchase_ok" eval="True"/>
+            <field name="list_price">80.00</field>
+            <field name="standard_price">25.00</field>
+            <field name="hotel_consumption_ok" eval="True"/>
+            <field name="hotel_consumption_policy">chargeable</field>
+            <field name="default_code">MB-SODA-01</field>
+        </record>
+
+        <!-- CHARGEABLE: Minibar Beer -->
+        <record id="product_minibar_beer" model="product.template">
+            <field name="name">Minibar Beer (330ml)</field>
+            <field name="categ_id" ref="product_category_minibar"/>
+            <field name="type">consu</field>
+            <field name="is_storable" eval="True"/>
+            <field name="sale_ok" eval="True"/>
+            <field name="purchase_ok" eval="True"/>
+            <field name="list_price">150.00</field>
+            <field name="standard_price">65.00</field>
+            <field name="hotel_consumption_ok" eval="True"/>
+            <field name="hotel_consumption_policy">chargeable</field>
+            <field name="default_code">MB-BEER-01</field>
+        </record>
+
+        <!-- CHARGEABLE: Minibar Cola -->
+        <record id="product_minibar_cola" model="product.template">
+            <field name="name">Minibar Cola (250ml)</field>
+            <field name="categ_id" ref="product_category_minibar"/>
+            <field name="type">consu</field>
+            <field name="is_storable" eval="True"/>
+            <field name="sale_ok" eval="True"/>
+            <field name="purchase_ok" eval="True"/>
+            <field name="list_price">70.00</field>
+            <field name="standard_price">20.00</field>
+            <field name="hotel_consumption_ok" eval="True"/>
+            <field name="hotel_consumption_policy">chargeable</field>
+            <field name="default_code">MB-COLA-01</field>
+        </record>
+
+        <!-- CHARGEABLE: Minibar Chocolate Bar -->
+        <record id="product_minibar_chocolate" model="product.template">
+            <field name="name">Minibar Chocolate Bar</field>
+            <field name="categ_id" ref="product_category_minibar"/>
+            <field name="type">consu</field>
+            <field name="is_storable" eval="True"/>
+            <field name="sale_ok" eval="True"/>
+            <field name="purchase_ok" eval="True"/>
+            <field name="list_price">100.00</field>
+            <field name="standard_price">40.00</field>
+            <field name="hotel_consumption_ok" eval="True"/>
+            <field name="hotel_consumption_policy">chargeable</field>
+            <field name="default_code">MB-CHOCO-01</field>
+        </record>
+
+        <!-- CHARGEABLE: Minibar Mixed Nuts / Snack Pack -->
+        <record id="product_minibar_nuts" model="product.template">
+            <field name="name">Minibar Mixed Nuts / Snack Pack</field>
+            <field name="categ_id" ref="product_category_minibar"/>
+            <field name="type">consu</field>
+            <field name="is_storable" eval="True"/>
+            <field name="sale_ok" eval="True"/>
+            <field name="purchase_ok" eval="True"/>
+            <field name="list_price">120.00</field>
+            <field name="standard_price">50.00</field>
+            <field name="hotel_consumption_ok" eval="True"/>
+            <field name="hotel_consumption_policy">chargeable</field>
+            <field name="default_code">MB-NUTS-01</field>
+        </record>
+
+        <!-- SERVICE: Laundry Per Piece -->
+        <record id="product_laundry_service" model="product.template">
+            <field name="name">Laundry Service (Per Piece)</field>
+            <field name="categ_id" ref="product_category_laundry"/>
+            <field name="type">service</field>
+            <field name="sale_ok" eval="True"/>
+            <field name="purchase_ok" eval="False"/>
+            <field name="list_price">80.00</field>
+            <field name="hotel_consumption_ok" eval="True"/>
+            <field name="hotel_consumption_policy">chargeable</field>
+            <field name="default_code">SVC-LAUND-01</field>
+        </record>
+
+        <!-- SERVICE: Dry Cleaning -->
+        <record id="product_dry_cleaning" model="product.template">
+            <field name="name">Dry Cleaning Service</field>
+            <field name="categ_id" ref="product_category_laundry"/>
+            <field name="type">service</field>
+            <field name="sale_ok" eval="True"/>
+            <field name="purchase_ok" eval="False"/>
+            <field name="list_price">200.00</field>
+            <field name="hotel_consumption_ok" eval="True"/>
+            <field name="hotel_consumption_policy">chargeable</field>
+            <field name="default_code">SVC-DRYCLEAN-01</field>
+        </record>
+
+    </data>
+</odoo>

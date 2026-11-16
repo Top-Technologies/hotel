@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Clearing account: the POS session debits it (via the "Charge to
+         Room" payment method) and the folio line credits it, so the food
+         revenue is recognized once (POS session) and the guest is billed
+         once (folio). The account always nets to zero. -->
+    <function model="hotel.config" name="_create_room_charge_clearing_account"/>
+
+    <!-- Customer invoices need a receivable account for their payment-term
+         line, even before a full chart of accounts is installed. -->
+    <function model="hotel.config" name="_hotel_receivable_account"/>
+
+    <!-- Safe idempotent initial loaders that do not create duplicate records
+         if an existing journal with code RCH or a configured payment method exists. -->
+    <function model="hotel.config" name="_ensure_room_charge_journal"/>
+    <function model="hotel.config" name="_ensure_room_charge_payment_method"/>
+    <function model="hotel.config" name="_ensure_room_service_product"/>
+
+    <!-- Dedicated Hotel Room Service POS (Charge to Room) — created in Python
+         so optional POS addons (restaurant / self-order) do not break XML load. -->
+    <function model="hotel.config" name="_ensure_hotel_room_service_pos"/>
+
+</odoo>

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="paperformat_deposit_ledger" model="report.paperformat">
+        <field name="name">Deposit Ledger Landscape</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">10</field>
+        <field name="margin_bottom">10</field>
+        <field name="margin_left">10</field>
+        <field name="margin_right">10</field>
+    </record>
+
+    <record id="action_report_deposit_ledger" model="ir.actions.report">
+        <field name="name">Deposit Ledger</field>
+        <field name="model">hotel.deposit.ledger</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">hotel.report_deposit_ledger</field>
+        <field name="report_file">hotel.report_deposit_ledger</field>
+        <field name="print_report_name">'Deposit Ledger'</field>
+        <field name="paperformat_id" ref="paperformat_deposit_ledger"/>
+    </record>
+
+    <template id="report_deposit_ledger">
+        <t t-call="web.html_container">
+            <t t-call="web.external_layout">
+                <div class="page">
+                    <h2>Deposit Ledger</h2>
+                    <p class="text-muted" t-esc="data['company']"/>
+                    <div class="row mt-3">
+                        <div class="col-4">
+                            <strong>Deposits held</strong>
+                            <div t-esc="data['kpis']['deposits_held']"/>
+                        </div>
+                        <div class="col-4">
+                            <strong>Bookings</strong>
+                            <div t-esc="data['kpis']['bookings']"/>
+                        </div>
+                        <div class="col-4">
+                            <strong>Arriving within <t t-esc="data['kpis']['window_days']"/> days</strong>
+                            <div t-esc="data['kpis']['arriving_soon']"/>
+                        </div>
+                    </div>
+                    <table class="table table-sm mt-3">
+                        <thead>
+                            <tr>
+                                <th>Guest</th>
+                                <th>Booking</th>
+                                <th>Status</th>
+                                <th>Arrival</th>
+                                <th>Nights</th>
+                                <th class="text-end">Stay value</th>
+                                <th class="text-end">Deposit held</th>
+                                <th class="text-end">Still to pay</th>
+                                <th>Paid by</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="data['groups']" t-as="group">
+                                <tr class="table-secondary">
+                                    <td colspan="5"><strong><t t-esc="group['label']"/> (<t t-esc="group['count']"/>)</strong></td>
+                                    <td class="text-end"><strong><t t-esc="group['stay_value']"/></strong></td>
+                                    <td class="text-end"><strong><t t-esc="group['deposit_held']"/></strong></td>
+                                    <td class="text-end"><strong><t t-esc="group['still_to_pay']"/></strong></td>
+                                    <td/>
+                                </tr>
+                                <tr t-foreach="group['rows']" t-as="row">
+                                    <td t-esc="row['guest']"/>
+                                    <td t-esc="row['booking']"/>
+                                    <td t-esc="row['status']"/>
+                                    <td><span t-esc="row['arrival']"/></td>
+                                    <td t-esc="row['nights']"/>
+                                    <td class="text-end" t-esc="row['stay_value']"/>
+                                    <td class="text-end" t-esc="row['deposit_held']"/>
+                                    <td class="text-end" t-esc="row['still_to_pay']"/>
+                                    <td t-esc="row['paid_by']"/>
+                                </tr>
+                            </t>
+                            <tr class="fw-bold border-top">
+                                <td colspan="5">Total</td>
+                                <td class="text-end" t-esc="data['totals']['stay_value']"/>
+                                <td class="text-end" t-esc="data['totals']['deposit_held']"/>
+                                <td class="text-end" t-esc="data['totals']['still_to_pay']"/>
+                                <td/>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <p class="text-muted small mt-3">
+                        The money taken in advance for bookings that have not arrived: deposit and prepayment by booking and arrival month, and what is still to pay on each stay. Deposits are the guests' money until they arrive, and move to their bill when they check in.
+                    </p>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

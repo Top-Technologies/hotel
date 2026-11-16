@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============================================================
+         Guest property categories (configurable item types)
+         ============================================================ -->
+    <record id="hotel_property_category_view_list" model="ir.ui.view">
+        <field name="name">hotel.property.category.list</field>
+        <field name="model">hotel.property.category</field>
+        <field name="arch" type="xml">
+            <list string="Property Categories">
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="requires_deposit"/>
+                <field name="is_sensitive"/>
+                <field name="property_count" string="Assets"/>
+                <field name="lost_found_count" string="Lost &amp; Found"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="hotel_property_category_view_form" model="ir.ui.view">
+        <field name="name">hotel.property.category.form</field>
+        <field name="model">hotel.property.category</field>
+        <field name="arch" type="xml">
+            <form string="Property Category">
+                <sheet>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger"
+                            invisible="active"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="e.g. Electronics"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="code"/>
+                            <field name="sequence"/>
+                        </group>
+                        <group>
+                            <field name="requires_deposit"/>
+                            <field name="is_sensitive"/>
+                        </group>
+                    </group>
+                    <field name="description" placeholder="Notes about this category"/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="hotel_property_category_view_search" model="ir.ui.view">
+        <field name="name">hotel.property.category.search</field>
+        <field name="model">hotel.property.category</field>
+        <field name="arch" type="xml">
+            <search string="Property Categories">
+                <field name="name"/>
+                <filter name="deposit_categories" string="Deposit Items"
+                        domain="[('requires_deposit', '=', True)]"/>
+                <separator/>
+                <filter name="archived" string="Archived" domain="[('active', '=', False)]"/>
+                <group name="group_by">
+                    <filter name="group_deposit" string="Deposit Items"
+                            context="{'group_by': 'requires_deposit'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="hotel_property_category_action" model="ir.actions.act_window">
+        <field name="name">Property Categories</field>
+        <field name="res_model">hotel.property.category</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="hotel_property_category_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Define the item types used to
+                classify guest property and lost &amp; found items.</p>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         Storage locations (safes, boxes, storage rooms)
+         ============================================================ -->
+    <record id="hotel_storage_location_view_list" model="ir.ui.view">
+        <field name="name">hotel.storage.location.list</field>
+        <field name="model">hotel.storage.location</field>
+        <field name="arch" type="xml">
+            <list string="Storage Locations">
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="location_type"/>
+                <field name="capacity"/>
+                <field name="property_count" string="Assets"/>
+                <field name="deposit_count" string="Open Deposits"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="hotel_storage_location_view_form" model="ir.ui.view">
+        <field name="name">hotel.storage.location.form</field>
+        <field name="model">hotel.storage.location</field>
+        <field name="arch" type="xml">
+            <form string="Storage Location">
+                <sheet>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger"
+                            invisible="active"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="e.g. Main Safe"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="code"/>
+                            <field name="location_type"/>
+                        </group>
+                        <group>
+                            <field name="sequence"/>
+                            <field name="capacity"/>
+                        </group>
+                    </group>
+                    <field name="notes" placeholder="Access instructions"/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="hotel_storage_location_view_search" model="ir.ui.view">
+        <field name="name">hotel.storage.location.search</field>
+        <field name="model">hotel.storage.location</field>
+        <field name="arch" type="xml">
+            <search string="Storage Locations">
+                <field name="name"/>
+                <filter name="safes" string="Safes &amp; Boxes"
+                        domain="[('location_type', 'in', ['safe', 'deposit_box'])]"/>
+                <separator/>
+                <filter name="archived" string="Archived" domain="[('active', '=', False)]"/>
+                <group name="group_by">
+                    <filter name="group_type" string="Type" context="{'group_by': 'location_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="hotel_storage_location_action" model="ir.actions.act_window">
+        <field name="name">Storage Locations</field>
+        <field name="res_model">hotel.storage.location</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="hotel_storage_location_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Configure the safes, deposit boxes
+                and storage rooms used for guest property.</p>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         Guest profile integration (res.partner)
+         ============================================================ -->
+    <record id="res_partner_view_form_property" model="ir.ui.view">
+        <field name="name">res.partner.form.hotel.property</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <div name="button_box" position="inside">
+                <button name="action_open_properties" type="object"
+                        class="oe_stat_button" icon="fa-briefcase"
+                        groups="hotel.group_hotel_user">
+                    <field name="property_count" widget="statinfo" string="Assets"/>
+                </button>
+                <button name="action_open_safe_deposits" type="object"
+                        class="oe_stat_button" icon="fa-lock"
+                        groups="hotel.group_hotel_user">
+                    <field name="safe_deposit_count" widget="statinfo" string="Deposits"/>
+                </button>
+                <button name="action_open_lost_found" type="object"
+                        class="oe_stat_button" icon="fa-search"
+                        groups="hotel.group_hotel_user">
+                    <field name="lost_found_claim_count" widget="statinfo" string="Claims"/>
+                </button>
+            </div>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         Reservation integration
+         ============================================================ -->
+    <record id="hotel_reservation_view_form_property" model="ir.ui.view">
+        <field name="name">hotel.reservation.form.property</field>
+        <field name="model">hotel.reservation</field>
+        <field name="inherit_id" ref="hotel_reservation_view_form"/>
+        <field name="arch" type="xml">
+            <div name="button_box" position="inside">
+                <button name="action_open_properties" type="object"
+                        class="oe_stat_button" icon="fa-briefcase">
+                    <field name="property_count" widget="statinfo" string="Guest Assets"/>
+                </button>
+                <button name="action_open_safe_deposits" type="object"
+                        class="oe_stat_button" icon="fa-lock">
+                    <field name="safe_deposit_count" widget="statinfo" string="Deposits"/>
+                </button>
+            </div>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         Room integration
+         ============================================================ -->
+    <record id="hotel_room_view_form_property" model="ir.ui.view">
+        <field name="name">hotel.room.form.property</field>
+        <field name="model">hotel.room</field>
+        <field name="inherit_id" ref="hotel_room_view_form"/>
+        <field name="arch" type="xml">
+            <div name="button_box" position="inside">
+                <button name="action_open_properties" type="object"
+                        class="oe_stat_button" icon="fa-briefcase">
+                    <field name="property_count" widget="statinfo" string="Guest Assets"/>
+                </button>
+                <button name="action_open_safe_deposits" type="object"
+                        class="oe_stat_button" icon="fa-lock">
+                    <field name="safe_deposit_count" widget="statinfo" string="Deposits"/>
+                </button>
+                <button name="action_open_lost_found" type="object"
+                        class="oe_stat_button" icon="fa-search">
+                    <field name="lost_found_count" widget="statinfo" string="Lost &amp; Found"/>
+                </button>
+            </div>
+        </field>
+    </record>
+
+</odoo>

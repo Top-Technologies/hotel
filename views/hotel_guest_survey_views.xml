@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Survey responses seen from the hotel: the standard response is
+         completed with the stay it belongs to. -->
+    <record id="hotel_guest_survey_view_form" model="ir.ui.view">
+        <field name="name">survey.user_input.form.hotel.stay</field>
+        <field name="model">survey.user_input</field>
+        <field name="inherit_id" ref="survey.survey_user_input_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="attributes">
+                <attribute name="create">True</attribute>
+            </xpath>
+            <xpath expr="//header/field[@name='state']" position="before">
+                <button name="action_open_stay" type="object"
+                        string="Open Stay" invisible="not reservation_id"/>
+            </xpath>
+            <xpath expr="//sheet/group" position="after">
+                <group string="Hotel Stay">
+                    <field name="guest_id"/>
+                    <field name="reservation_id"/>
+                    <field name="room_id" readonly="1"/>
+                    <field name="checkin_date" readonly="1"/>
+                    <field name="checkout_date" readonly="1"/>
+                    <field name="service_type"/>
+                    <field name="rating"/>
+                </group>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Hotel Comments" name="hotel_comments">
+                    <group>
+                        <field name="comments" nolabel="1" colspan="2"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="hotel_guest_survey_view_list" model="ir.ui.view">
+        <field name="name">survey.user_input.list.hotel.stay</field>
+        <field name="model">survey.user_input</field>
+        <field name="inherit_id" ref="survey.survey_user_input_view_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list" position="attributes">
+                <attribute name="create">True</attribute>
+            </xpath>
+            <xpath expr="//list/field[@name='partner_id']" position="after">
+                <field name="guest_id" optional="show"/>
+                <field name="room_id" optional="show"/>
+                <field name="service_type" optional="show"/>
+                <field name="rating" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="hotel_guest_survey_view_search" model="ir.ui.view">
+        <field name="name">survey.user_input.search.hotel.stay</field>
+        <field name="model">survey.user_input</field>
+        <field name="inherit_id" ref="survey.survey_user_input_view_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <field name="guest_id"/>
+                <field name="room_id"/>
+                <field name="service_type"/>
+                <filter string="Rated" name="rated" domain="[('rating', '&gt;', 0)]"/>
+                <separator/>
+                <filter string="Service Type" name="group_by_service_type"
+                        context="{'group_by': 'service_type'}"/>
+                <filter string="Guest" name="group_by_guest"
+                        context="{'group_by': 'guest_id'}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="hotel_guest_survey_action" model="ir.actions.act_window">
+        <field name="name">Survey Responses</field>
+        <field name="res_model">survey.user_input</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="survey.survey_user_input_view_search"/>
+        <field name="context">{'search_default_not_test': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No guest feedback yet
+            </p>
+            <p>Share a survey from the Survey application, or record the
+                answers a guest gave by phone or e-mail. The response is then
+                linked to the guest, the room and the stay it rates.</p>
+        </field>
+    </record>
+
+</odoo>

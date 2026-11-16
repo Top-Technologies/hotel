@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="module_category_hotel" model="ir.module.category">
+        <field name="name">Hotel</field>
+        <field name="description">Hotel Management</field>
+        <field name="sequence">40</field>
+    </record>
+
+    <record id="group_hotel_user" model="res.groups">
+        <field name="name">Hotel Staff</field>
+        <field name="category_id" ref="module_category_hotel"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+        <field name="comment">Base hotel role: read access to hotel master data.</field>
+    </record>
+
+    <record id="group_receptionist" model="res.groups">
+        <field name="name">Receptionist</field>
+        <field name="category_id" ref="module_category_hotel"/>
+        <field name="implied_ids" eval="[(4, ref('group_hotel_user'))]"/>
+        <field name="comment">Front desk: reservations, guests, check-in, check-out and guest invoices.</field>
+    </record>
+
+    <record id="group_housekeeping" model="res.groups">
+        <field name="name">Housekeeping</field>
+        <field name="category_id" ref="module_category_hotel"/>
+        <field name="implied_ids" eval="[(4, ref('group_hotel_user'))]"/>
+        <field name="comment">Cleaning tasks and room status from cleaning to inspected.</field>
+    </record>
+
+    <record id="group_room_maintenance" model="res.groups">
+        <field name="name">Room Maintenance</field>
+        <field name="category_id" ref="module_category_hotel"/>
+        <field name="implied_ids"
+               eval="[(4, ref('group_hotel_user')), (4, ref('maintenance.group_equipment_manager'))]"/>
+        <field name="comment">Room maintenance requests and repairs.</field>
+    </record>
+
+    <record id="group_security_officer" model="res.groups">
+        <field name="name">Security Officer</field>
+        <field name="category_id" ref="module_category_hotel"/>
+        <field name="implied_ids" eval="[(4, ref('group_hotel_user'))]"/>
+        <field name="comment">Custody of guest assets, safe deposits and lost
+            &amp; found items: receipts, transfers and releases.</field>
+    </record>
+
+    <record id="group_housekeeping_supervisor" model="res.groups">
+        <field name="name">Housekeeping Supervisor</field>
+        <field name="category_id" ref="module_category_hotel"/>
+        <field name="implied_ids" eval="[(4, ref('group_housekeeping'))]"/>
+        <field name="comment">Reviews cleaning, inspects rooms, approves readiness
+            and reviews room consumption.</field>
+    </record>
+
+    <record id="group_finance_user" model="res.groups">
+        <field name="name">Hotel Finance</field>
+        <field name="category_id" ref="module_category_hotel"/>
+        <field name="implied_ids"
+               eval="[(4, ref('group_hotel_user')), (4, ref('account.group_account_invoice'))]"/>
+        <field name="comment">Reviews hotel financial transactions: credit sales,
+            discounts, rate changes and waste.</field>
+    </record>
+
+    <record id="group_hotel_manager" model="res.groups">
+        <field name="name">Hotel Manager</field>
+        <field name="category_id" ref="module_category_hotel"/>
+        <field name="implied_ids"
+               eval="[(4, ref('group_receptionist')), (4, ref('group_housekeeping')), (4, ref('group_housekeeping_supervisor')), (4, ref('group_room_maintenance')), (4, ref('group_security_officer'))]"/>
+        <field name="comment">Full hotel operations, configuration and reports.</field>
+    </record>
+
+    <record id="group_general_manager" model="res.groups">
+        <field name="name">General Manager</field>
+        <field name="category_id" ref="module_category_hotel"/>
+        <field name="implied_ids"
+               eval="[(4, ref('group_hotel_manager')), (4, ref('group_finance_user'))]"/>
+        <field name="comment">Highest approval level: high-value discounts,
+            major rate changes and credit approvals.</field>
+    </record>
+
+</odoo>

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Source of the supplies kept in the guest rooms (minibar, amenities, linen). -->
+        <record id="hotel_location_rooms" model="stock.location">
+            <field name="name">Hotel Rooms</field>
+            <field name="usage">internal</field>
+            <field name="location_id" ref="stock.stock_location_stock"/>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+
+        <!-- Destination of posted room consumption. A customer-usage location is
+             deliberately used so that the standard stock valuation relieves the
+             inventory and recognises the cost of the consumed supplies. -->
+        <record id="hotel_location_consumption" model="stock.location">
+            <field name="name">Hotel Room Consumption</field>
+            <field name="usage">customer</field>
+            <field name="location_id" ref="stock.stock_location_customers"/>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+
+        <!-- Kitchen / F&B store: source of the ingredients for staff meals. -->
+        <record id="hotel_location_kitchen" model="stock.location">
+            <field name="name">Hotel Kitchen</field>
+            <field name="usage">internal</field>
+            <field name="location_id" ref="stock.stock_location_stock"/>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+
+        <!-- Housekeeping Cart / Floor Pantry: holds buffer stock carried by cleaning staff. -->
+        <record id="hotel_location_housekeeping_cart" model="stock.location">
+            <field name="name">Housekeeping Cart</field>
+            <field name="usage">internal</field>
+            <field name="location_id" ref="stock.stock_location_stock"/>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+
+        <!-- Dedicated internal transfer: the stock operation used when a room
+             consumption record is posted. -->
+        <record id="hotel_picking_type_internal" model="stock.picking.type">
+            <field name="name">Hotel Room Supplies</field>
+            <field name="code">internal</field>
+            <field name="warehouse_id" ref="stock.warehouse0"/>
+            <field name="sequence_code">HS</field>
+            <field name="sequence">25</field>
+            <field name="default_location_src_id" ref="hotel_location_rooms"/>
+            <field name="default_location_dest_id" ref="hotel_location_consumption"/>
+        </record>
+
+    </data>
+</odoo>

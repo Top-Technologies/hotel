@@ -1,0 +1,455 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Room rate change request -->
+    <record id="hotel_rate_change_view_list" model="ir.ui.view">
+        <field name="name">hotel.rate.change.list</field>
+        <field name="model">hotel.rate.change</field>
+        <field name="arch" type="xml">
+            <list string="Rate Changes" decoration-warning="state == 'pending'"
+                  decoration-success="state == 'approved'"
+                  decoration-muted="state == 'rejected'">
+                <field name="name"/>
+                <field name="room_type_id"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="old_rate" sum="Current"/>
+                <field name="new_rate" sum="New"/>
+                <field name="difference" optional="show" sum="Difference"/>
+                <field name="change_pct" optional="show"/>
+                <field name="effective_date" optional="show"/>
+                <field name="requested_by_id" optional="show"/>
+                <field name="approval_date" optional="show"/>
+                <field name="state" widget="badge"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="hotel_rate_change_view_form" model="ir.ui.view">
+        <field name="name">hotel.rate.change.form</field>
+        <field name="model">hotel.rate.change</field>
+        <field name="arch" type="xml">
+            <form string="Room Rate Change">
+                <header>
+                    <button name="action_submit" type="object" string="Submit"
+                            class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_approve" type="object" string="Approve"
+                            class="btn-primary"
+                            invisible="state not in ('pending','finance_review')"
+                            groups="hotel.group_hotel_manager,hotel.group_finance_user,hotel.group_general_manager,base.group_system"/>
+                    <button name="action_reject" type="object" string="Reject"
+                            class="btn-secondary"
+                            invisible="state not in ('pending','finance_review')"
+                            groups="hotel.group_hotel_manager,hotel.group_finance_user,hotel.group_general_manager,base.group_system"/>
+                    <button name="action_reset" type="object" string="Reset to Draft"
+                            invisible="state not in ('draft','rejected')"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,pending,finance_review,approved,rejected"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_room_type" type="object"
+                                class="oe_stat_button" icon="fa-bed">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">Room Type</span>
+                            </div>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                        <h3><field name="room_type_id"/></h3>
+                    </div>
+                    <group>
+                        <group string="Rate">
+                            <field name="currency_id" invisible="1"/>
+                            <field name="old_rate" readonly="1"/>
+                            <field name="new_rate"/>
+                            <field name="difference" readonly="1"/>
+                            <field name="change_pct" readonly="1"/>
+                            <field name="effective_date"/>
+                        </group>
+                        <group string="Process">
+                            <field name="requested_by_id" readonly="1"/>
+                            <field name="requested_date" readonly="1"/>
+                            <field name="manager_approver_id" readonly="1"/>
+                            <field name="approver_id" readonly="1"/>
+                            <field name="approval_date" readonly="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="reason" placeholder="Why is the rate changing?"/>
+                        <field name="notes" placeholder="Notes..."/>
+                    </group>
+                    <chatter/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="hotel_rate_change_view_search" model="ir.ui.view">
+        <field name="name">hotel.rate.change.search</field>
+        <field name="model">hotel.rate.change</field>
+        <field name="arch" type="xml">
+            <search string="Rate Changes">
+                <field name="name"/>
+                <field name="room_type_id"/>
+                <filter name="filter_pending" string="Waiting for Approval"
+                        domain="[('state','=','pending')]"/>
+                <filter name="filter_approved" string="Approved"
+                        domain="[('state','=','approved')]"/>
+                <separator/>
+                <group name="group_by">
+                    <filter string="Status" name="group_state"
+                            context="{'group_by': 'state'}"/>
+                    <filter string="Room Type" name="group_room_type"
+                            context="{'group_by': 'room_type_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="hotel_rate_change_action" model="ir.actions.act_window">
+        <field name="name">Rate Changes</field>
+        <field name="res_model">hotel.rate.change</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="hotel_rate_change_view_search"/>
+        <field name="context">{'search_default_filter_pending': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No rate change requested</p>
+            <p>Ask for the approval of a room rate change: the new rate only
+                lands on the room type once the hotel manager (or the general
+                manager) approves it.</p>
+        </field>
+    </record>
+
+    <!-- Discount program rules -->
+    <record id="hotel_discount_rule_view_list" model="ir.ui.view">
+        <field name="name">hotel.discount.rule.list</field>
+        <field name="model">hotel.discount.rule</field>
+        <field name="arch" type="xml">
+            <list string="Discount Programs">
+                <field name="name"/>
+                <field name="program"/>
+                <field name="max_discount_pct"/>
+                <field name="approver_level"/>
+                <field name="active" widget="boolean_toggle" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="hotel_discount_rule_view_form" model="ir.ui.view">
+        <field name="name">hotel.discount.rule.form</field>
+        <field name="model">hotel.discount.rule</field>
+        <field name="arch" type="xml">
+            <form string="Discount Program">
+                <sheet>
+                    <widget name="web_ribbon" title="Archived"
+                            bg_color="text-bg-danger" invisible="active"/>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="Program name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="program"/>
+                            <field name="max_discount_pct"/>
+                        </group>
+                        <group>
+                            <field name="approver_level"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="note" placeholder="Contract, conditions..."/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="hotel_discount_rule_view_search" model="ir.ui.view">
+        <field name="name">hotel.discount.rule.search</field>
+        <field name="model">hotel.discount.rule</field>
+        <field name="arch" type="xml">
+            <search string="Discount Programs">
+                <field name="name"/>
+                <filter name="filter_active" string="Active"
+                        domain="[('active','=',True)]"/>
+                <group name="group_by">
+                    <filter string="Program Type" name="group_program"
+                            context="{'group_by': 'program'}"/>
+                    <filter string="Authorized By" name="group_approver"
+                            context="{'group_by': 'approver_level'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="hotel_discount_rule_action" model="ir.actions.act_window">
+        <field name="name">Discount Programs</field>
+        <field name="res_model">hotel.discount.rule</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="hotel_discount_rule_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No discount program yet</p>
+            <p>Describe the corporate contracts, groups, travel agents and
+                loyalty programs: how much they may discount and who signs.</p>
+        </field>
+    </record>
+
+    <!-- Discount approval request -->
+    <record id="hotel_discount_approval_view_list" model="ir.ui.view">
+        <field name="name">hotel.discount.approval.list</field>
+        <field name="model">hotel.discount.approval</field>
+        <field name="arch" type="xml">
+            <list string="Discount Requests"
+                  decoration-warning="state == 'pending'"
+                  decoration-success="state == 'approved' and applied"
+                  decoration-muted="state == 'rejected'">
+                <field name="name"/>
+                <field name="reservation_id"/>
+                <field name="guest_id" optional="show"/>
+                <field name="rule_id" optional="show"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="discount_pct"/>
+                <field name="approval_level" optional="show"/>
+                <field name="discount_amount" sum="Discount"/>
+                <field name="approver_id" optional="show"/>
+                <field name="state" widget="badge"/>
+                <field name="applied" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="hotel_discount_approval_view_form" model="ir.ui.view">
+        <field name="name">hotel.discount.approval.form</field>
+        <field name="model">hotel.discount.approval</field>
+        <field name="arch" type="xml">
+            <form string="Discount Request">
+                <header>
+                    <button name="action_submit" type="object" string="Submit"
+                            class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_approve" type="object" string="Approve"
+                            class="btn-primary" invisible="state != 'pending'"/>
+                    <button name="action_reject" type="object" string="Reject"
+                            class="btn-secondary" invisible="state != 'pending'"/>
+                    <button name="action_reset" type="object" string="Reset to Draft"
+                            invisible="state not in ('draft','rejected')"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,pending,approved,rejected"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_reservation" type="object"
+                                class="oe_stat_button" icon="fa-calendar">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">Reservation</span>
+                            </div>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                        <h3><field name="reservation_id"/></h3>
+                    </div>
+                    <group>
+                        <group string="Discount">
+                            <field name="currency_id" invisible="1"/>
+                            <field name="guest_id" readonly="1"/>
+                            <field name="rule_id"/>
+                            <field name="discount_pct"/>
+                            <field name="approval_level" readonly="1"/>
+                            <field name="base_amount" readonly="1"/>
+                            <field name="discount_amount" readonly="1"/>
+                        </group>
+                        <group string="Process">
+                            <field name="requested_by_id" readonly="1"/>
+                            <field name="approver_id" readonly="1"/>
+                            <field name="action_date" readonly="1"/>
+                            <field name="applied" readonly="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="reason" placeholder="Why is this discount granted?"/>
+                    </group>
+                    <chatter/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="hotel_discount_approval_view_search" model="ir.ui.view">
+        <field name="name">hotel.discount.approval.search</field>
+        <field name="model">hotel.discount.approval</field>
+        <field name="arch" type="xml">
+            <search string="Discount Requests">
+                <field name="name"/>
+                <field name="reservation_id"/>
+                <field name="guest_id"/>
+                <field name="rule_id"/>
+                <filter name="filter_pending" string="Waiting for Approval"
+                        domain="[('state','=','pending')]"/>
+                <filter name="filter_approved" string="Approved"
+                        domain="[('state','=','approved')]"/>
+                <filter name="filter_not_applied" string="Not Applied"
+                        domain="[('state','=','approved'),('applied','=',False)]"/>
+                <separator/>
+                <group name="group_by">
+                    <filter string="Status" name="group_state"
+                            context="{'group_by': 'state'}"/>
+                    <filter string="Program" name="group_rule"
+                            context="{'group_by': 'rule_id'}"/>
+                    <filter string="Stay" name="group_reservation"
+                            context="{'group_by': 'reservation_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="hotel_discount_approval_action" model="ir.actions.act_window">
+        <field name="name">Discount Requests</field>
+        <field name="res_model">hotel.discount.approval</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="hotel_discount_approval_view_search"/>
+        <field name="context">{'search_default_filter_pending': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No discount requested</p>
+            <p>A discount above the free threshold must be requested and
+                approved here before it is applied on the stay. Finance sees
+                the amount taken off every time.</p>
+        </field>
+    </record>
+
+    <!-- Credit limit approval -->
+    <record id="hotel_credit_approval_view_list" model="ir.ui.view">
+        <field name="name">hotel.credit.approval.list</field>
+        <field name="model">hotel.credit.approval</field>
+        <field name="arch" type="xml">
+            <list string="Credit Requests"
+                  decoration-warning="state == 'pending'"
+                  decoration-success="state == 'approved'"
+                  decoration-muted="state == 'rejected'">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="current_limit"/>
+                <field name="requested_limit"/>
+                <field name="requested_amount" optional="show" sum="Asked"/>
+                <field name="approver_id" optional="show"/>
+                <field name="finance_approver_id" optional="show"/>
+                <field name="state" widget="badge"/>
+                <field name="applied" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="hotel_credit_approval_view_form" model="ir.ui.view">
+        <field name="name">hotel.credit.approval.form</field>
+        <field name="model">hotel.credit.approval</field>
+        <field name="arch" type="xml">
+            <form string="Credit Request">
+                <header>
+                    <button name="action_submit" type="object" string="Submit"
+                            class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_approve" type="object" string="Approve"
+                            class="btn-primary"
+                            invisible="state not in ('pending','finance_review')"
+                            groups="hotel.group_finance_user,hotel.group_hotel_manager,hotel.group_general_manager,base.group_system"/>
+                    <button name="action_reject" type="object" string="Reject"
+                            class="btn-secondary"
+                            invisible="state not in ('pending','finance_review')"
+                            groups="hotel.group_finance_user,hotel.group_hotel_manager,hotel.group_general_manager,base.group_system"/>
+                    <button name="action_reset" type="object" string="Reset to Draft"
+                            invisible="state not in ('draft','rejected')"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,pending,finance_review,approved,rejected"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_partner" type="object"
+                                class="oe_stat_button" icon="fa-user">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">Customer</span>
+                            </div>
+                        </button>
+                        <button name="action_open_reservation" type="object"
+                                class="oe_stat_button" icon="fa-calendar"
+                                invisible="not reservation_id">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">Reservation</span>
+                            </div>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                        <h3><field name="partner_id"/></h3>
+                    </div>
+                    <group>
+                        <group string="Credit">
+                            <field name="currency_id" invisible="1"/>
+                            <field name="current_limit" readonly="1"/>
+                            <field name="requested_limit"/>
+                            <field name="requested_amount"/>
+                            <field name="payment_term_id" readonly="1"/>
+                        </group>
+                        <group string="Process">
+                            <field name="reservation_id"/>
+                            <field name="requested_by_id" readonly="1"/>
+                            <field name="requested_date" readonly="1"/>
+                            <field name="approver_id" readonly="1"/>
+                            <field name="finance_approver_id" readonly="1"/>
+                            <field name="approval_date" readonly="1"/>
+                            <field name="applied" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Purpose">
+                        <field name="purpose" placeholder="What is the credit for?"/>
+                        <field name="reason" placeholder="Why does the customer need this limit?"/>
+                        <field name="notes" placeholder="Notes..."/>
+                    </group>
+                    <group>
+                        <field name="supporting_document_name" invisible="1"/>
+                        <field name="supporting_document" filename="supporting_document_name"/>
+                    </group>
+                    <chatter/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="hotel_credit_approval_view_search" model="ir.ui.view">
+        <field name="name">hotel.credit.approval.search</field>
+        <field name="model">hotel.credit.approval</field>
+        <field name="arch" type="xml">
+            <search string="Credit Requests">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <filter name="filter_pending" string="Waiting for Approval"
+                        domain="[('state','=','pending')]"/>
+                <filter name="filter_approved" string="Approved"
+                        domain="[('state','=','approved')]"/>
+                <separator/>
+                <group name="group_by">
+                    <filter string="Status" name="group_state"
+                            context="{'group_by': 'state'}"/>
+                    <filter string="Customer" name="group_partner"
+                            context="{'group_by': 'partner_id'}"/>
+                    <filter string="Reservation" name="group_reservation"
+                            context="{'group_by': 'reservation_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="hotel_credit_approval_action" model="ir.actions.act_window">
+        <field name="name">Credit Requests</field>
+        <field name="res_model">hotel.credit.approval</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="hotel_credit_approval_view_search"/>
+        <field name="context">{'search_default_filter_pending': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No credit requested</p>
+            <p>Ask hotel finance to raise the credit limit of a guest or a
+                corporate customer. Once approved the limit is written on the
+                customer and enforced by the standard Odoo credit check.</p>
+        </field>
+    </record>
+
+</odoo>

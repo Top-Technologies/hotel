@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Hotel Reservations Dashboard client action -->
+        <record id="action_hotel_reservations_dashboard" model="ir.actions.client">
+            <field name="name">Hotel Reservations Dashboard</field>
+            <field name="tag">hotel_reservations_dashboard</field>
+            <field name="target">current</field>
+        </record>
+
+        <!-- Pretty one-day Room Availability board -->
+        <record id="action_hotel_room_availability" model="ir.actions.client">
+            <field name="name">Room Availability</field>
+            <field name="tag">hotel_room_availability_board</field>
+            <field name="target">current</field>
+        </record>
+    <record id="action_hotel_room_availability_calendar" model="ir.actions.act_window">
+        <field name="name">Room Availability Calendar</field>
+        <field name="res_model">hotel.reservation</field>
+        <field name="view_mode">calendar,list,form</field>
+        <field name="view_id" ref="hotel_reservation_view_calendar"/>
+        <field name="search_view_id" ref="hotel_reservation_view_search"/>
+        <field name="domain">[('state', '!=', 'cancelled')]</field>
+        <field name="context">{'search_default_filter_confirmed': 1, 'search_default_filter_checked_in': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No reservations found</p>
+            <p>View room reservations and availability across check-in and check-out dates.
+               Switch to list view for an alternate tabular overview.</p>
+        </field>
+    </record>
+    </data>
+</odoo>

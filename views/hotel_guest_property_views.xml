@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Guest assets -->
+    <record id="hotel_guest_property_view_search" model="ir.ui.view">
+        <field name="name">hotel.guest.property.search</field>
+        <field name="model">hotel.guest.property</field>
+        <field name="arch" type="xml">
+            <search string="Guest Assets">
+                <field name="name"/>
+                <field name="guest_id"/>
+                <field name="room_id"/>
+                <field name="reservation_id"/>
+                <field name="category_id"/>
+                <field name="current_location_id"/>
+                <filter name="in_hotel" string="Held by Hotel"
+                        domain="[('state', 'in', ['received', 'stored', 'ready_return'])]"/>
+                <filter name="deposit_requested" string="Deposit Requested"
+                        domain="[('state', '=', 'deposit_requested')]"/>
+                <filter name="in_safe" string="In Safe" domain="[('state', '=', 'stored')]"/>
+                <filter name="ready_return" string="Ready for Return"
+                        domain="[('state', '=', 'ready_return')]"/>
+                <separator/>
+                <filter name="my_items" string="Received By Me"
+                        domain="[('received_by_id', '=', uid)]"/>
+                <filter name="due_today" string="Return Due Today"
+                        domain="[('is_return_due_today', '=', True)]"/>
+                <filter name="overdue" string="Overdue Return"
+                        domain="[('is_return_overdue', '=', True)]"/>
+                <separator/>
+                <filter name="closed" string="Closed"
+                        domain="[('state', 'in', ['returned', 'cancelled'])]"/>
+                <group name="group_by">
+                    <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                    <filter name="group_category" string="Category"
+                            context="{'group_by': 'category_id'}"/>
+                    <filter name="group_location" string="Storage Location"
+                            context="{'group_by': 'current_location_id'}"/>
+                    <filter name="group_guest" string="Guest" context="{'group_by': 'guest_id'}"/>
+                    <filter name="group_received_month" string="Receipt Month"
+                            context="{'group_by': 'received_date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="hotel_guest_property_view_list" model="ir.ui.view">
+        <field name="name">hotel.guest.property.list</field>
+        <field name="model">hotel.guest.property</field>
+        <field name="arch" type="xml">
+            <list string="Guest Assets" decoration-muted="state == 'cancelled'"
+                  decoration-success="state == 'returned'"
+                  decoration-danger="is_return_overdue"
+                  decoration-warning="is_return_due_today">
+                <field name="name"/>
+                <field name="description"/>
+                <field name="guest_id"/>
+                <field name="room_id"/>
+                <field name="category_id"/>
+                <field name="state" widget="badge"
+                       decoration-primary="state == 'received'"
+                       decoration-success="state == 'stored'"
+                       decoration-warning="state in ('deposit_requested', 'ready_return')"
+                       decoration-info="state == 'returned'"/>
+                <field name="current_location_id"/>
+                <field name="received_date" optional="show"/>
+                <field name="expected_return_date" optional="show"/>
+                <field name="is_return_due_today" column_invisible="1"/>
+                <field name="is_return_overdue" column_invisible="1"/>
+                <field name="custody_count" string="Custody" optional="hide"/>
+                <field name="deposit_count" string="Deposits" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="hotel_guest_property_view_kanban" model="ir.ui.view">
+        <field name="name">hotel.guest.property.kanban</field>
+        <field name="model">hotel.guest.property</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" quick_create="false">
+                <field name="color_index"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="oe_kanban_global_click">
+                            <div class="o_kanban_record_top">
+                                <div class="o_kanban_record_headings">
+                                    <strong class="o_kanban_record_title">
+                                        <field name="name"/>
+                                    </strong>
+                                    <small class="o_kanban_record_subtitle text-muted">
+                                        <field name="guest_id"/>
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="o_kanban_record_body">
+                                <div><field name="description"/></div>
+                                <div><field name="room_id"/></div>
+                            </div>
+                            <div class="o_kanban_record_bottom">
+                                <div class="oe_kanban_bottom_left">
+                                    <field name="category_id"/>
+                                </div>
+                                <div class="oe_kanban_bottom_right">
+                                    <field name="current_location_id"/>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="hotel_guest_property_view_form" model="ir.ui.view">
+        <field name="name">hotel.guest.property.form</field>
+        <field name="model">hotel.guest.property</field>
+        <field name="arch" type="xml">
+            <form string="Guest Asset">
+                <header>
+                    <button name="action_request_deposit" type="object" string="Request Deposit"
+                            invisible="state != 'guest_possession'"/>
+                    <button name="action_receive" type="object" string="Receive"
+                            class="btn-primary"
+                            invisible="state not in ('guest_possession', 'deposit_requested')"/>
+                    <button name="action_store" type="object" string="Store in Safe"
+                            class="btn-primary" invisible="state != 'received'"/>
+                    <button name="action_ready_return" type="object" string="Ready for Return"
+                            invisible="state != 'stored'"/>
+                    <button name="action_return" type="object" string="Return to Guest"
+                            class="btn-primary"
+                            invisible="state not in ('stored', 'ready_return')"/>
+                    <button name="action_cancel" type="object" string="Cancel"
+                            invisible="state in ('returned', 'cancelled')"/>
+                    <button name="action_print_property_card" type="object" string="Print Card"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="guest_possession,deposit_requested,received,stored,ready_return,returned"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_custody" type="object"
+                                class="oe_stat_button" icon="fa-exchange" invisible="not id">
+                            <field name="custody_count" widget="statinfo" string="Custody"/>
+                        </button>
+                        <button name="action_open_deposits" type="object"
+                                class="oe_stat_button" icon="fa-lock" invisible="not id">
+                            <field name="deposit_count" widget="statinfo" string="Deposits"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                        <h3><field name="description" placeholder="Item description"/></h3>
+                    </div>
+                    <field name="is_return_due_today" invisible="1"/>
+                    <field name="is_return_overdue" invisible="1"/>
+                    <div class="alert alert-warning" role="alert"
+                         invisible="not is_return_due_today">
+                        Expected return is today — prepare the item for the guest.
+                    </div>
+                    <div class="alert alert-danger" role="alert"
+                         invisible="not is_return_overdue">
+                        Expected return is overdue — contact the guest or escalate.
+                    </div>
+                    <group>
+                        <group string="Guest &amp; Stay">
+                            <field name="guest_id"/>
+                            <field name="reservation_id"/>
+                            <field name="room_id"/>
+                            <field name="category_id"/>
+                        </group>
+                        <group string="Item Details">
+                            <field name="serial_number"/>
+                            <field name="quantity"/>
+                            <field name="condition"/>
+                            <field name="ownership"/>
+                            <field name="current_location_id"/>
+                        </group>
+                        <group string="Receipt">
+                            <field name="received_date"/>
+                            <field name="received_by_id"/>
+                            <field name="expected_return_date"/>
+                        </group>
+                        <group string="Return">
+                            <field name="returned_date" readonly="1"/>
+                            <field name="returned_by_id" readonly="1"/>
+                            <field name="returned_to" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Notes">
+                            <field name="notes" placeholder="Handling notes, agreed terms..."/>
+                        </page>
+                        <page string="Custody History" invisible="not id">
+                            <field name="custody_ids" readonly="1" nolabel="1">
+                                <list string="Custody Records">
+                                    <field name="custody_date"/>
+                                    <field name="action"/>
+                                    <field name="from_location_id"/>
+                                    <field name="to_location_id"/>
+                                    <field name="user_id"/>
+                                    <field name="condition"/>
+                                    <field name="state"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Safe Deposits" invisible="not id">
+                            <field name="deposit_ids" readonly="1" nolabel="1">
+                                <list string="Safe Deposits">
+                                    <field name="name"/>
+                                    <field name="location_id"/>
+                                    <field name="received_date"/>
+                                    <field name="released_date"/>
+                                    <field name="state"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="hotel_guest_property_action" model="ir.actions.act_window">
+        <field name="name">Guest Assets</field>
+        <field name="res_model">hotel.guest.property</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="search_view_id" ref="hotel_guest_property_view_search"/>
+        <field name="context">{'search_default_in_hotel': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Record the items guests hand to the
+                hotel and follow them through the safe deposit and custody chain.</p>
+        </field>
+    </record>
+
+
+    <record id="hotel_guest_property_due_today_action" model="ir.actions.act_window">
+        <field name="name">Returns Due Today</field>
+        <field name="res_model">hotel.guest.property</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="hotel_guest_property_view_search"/>
+        <field name="context">{'search_default_due_today': 1}</field>
+        <field name="domain">[('is_return_due_today', '=', True)]</field>
+    </record>
+
+    <record id="hotel_guest_property_overdue_action" model="ir.actions.act_window">
+        <field name="name">Overdue Returns</field>
+        <field name="res_model">hotel.guest.property</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="hotel_guest_property_view_search"/>
+        <field name="context">{'search_default_overdue': 1}</field>
+        <field name="domain">[('is_return_overdue', '=', True)]</field>
+    </record>
+
+</odoo>

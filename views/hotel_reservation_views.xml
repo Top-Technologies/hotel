@@ -1,0 +1,452 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Primary booking entry: opens the normal reservation form. Defined
+         before the list view so the list header button can reference it. -->
+    <record id="hotel_reservation_book_action" model="ir.actions.act_window">
+        <field name="name">Book</field>
+        <field name="res_model">hotel.reservation</field>
+        <field name="view_mode">list,form</field>
+        <field name="target">current</field>
+        <field name="context">{'default_source': 'walkin'}</field>
+    </record>
+
+    <!-- Reservations -->
+    <record id="hotel_reservation_view_list" model="ir.ui.view">
+        <field name="name">hotel.reservation.list</field>
+        <field name="model">hotel.reservation</field>
+        <field name="arch" type="xml">
+            <list string="Reservations" multi_edit="1">
+                <header>
+                    <button name="hotel.hotel_reservation_book_action" type="action"
+                            string="Book" class="btn-primary" data-hotkey="b"/>
+                    <button name="hotel.hotel_walkin_wizard_action" type="action"
+                            string="Walk-in" class="btn-secondary" data-hotkey="w"/>
+                </header>
+                <field name="guest_id"/>
+                <field name="name"/>
+                <field name="source" optional="show"/>
+                <field name="room_id"/>
+                <field name="room_type_id"/>
+                <field name="checkin" string="Stay From"/>
+                <field name="checkout" string="Stay To"/>
+                <field name="actual_checkin" string="Checked-in On" optional="hide"/>
+                <field name="nights" sum="Nights"/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'draft'"
+                       decoration-success="state in ('checked_out',)"
+                       decoration-primary="state == 'checked_in'"
+                       decoration-warning="state == 'confirmed'"
+                       decoration-danger="state in ('cancelled','no_show')"/>
+                <field name="total" sum="Revenue"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="hotel_reservation_view_form" model="ir.ui.view">
+        <field name="name">hotel.reservation.form</field>
+        <field name="model">hotel.reservation</field>
+        <field name="arch" type="xml">
+            <form string="Reservation" class="o_hotel_form">
+                <header>
+                    <button name="action_confirm" type="object" string="Confirm"
+                            class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_checkin" type="object" string="Check-in"
+                            class="btn-primary" invisible="state != 'confirmed'"/>
+                    <button name="action_checkout" type="object" string="Check-out"
+                            class="btn-primary" invisible="state != 'checked_in'"/>
+                    <button name="action_print_registration_card" type="object"
+                            string="Registration Card"
+                            invisible="state != 'checked_in'"/>
+                    <button name="action_open_guest_folio" type="object" string="Guest Folio"
+                            invisible="state not in ('checked_in','checked_out')"/>
+                    <button name="action_no_show" type="object" string="No-show"
+                            invisible="state != 'confirmed'"/>
+                    <button name="action_cancel" type="object" string="Cancel"
+                            invisible="state not in ('draft','confirmed')"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,confirmed,checked_in,checked_out"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_invoices" type="object"
+                                class="oe_stat_button" icon="fa-pencil-square-o"
+                                invisible="invoice_count == 0">
+                            <field name="invoice_count" widget="statinfo" string="Invoices"/>
+                        </button>
+                        <button name="action_open_complaints" type="object"
+                                class="oe_stat_button" icon="fa-comment"
+                                invisible="not id">
+                            <span class="text-muted">Complaints</span>
+                        </button>
+                        <button name="action_open_discount_approvals"
+                                type="object" class="oe_stat_button"
+                                icon="fa-percent"
+                                invisible="discount_approval_count == 0">
+                            <field name="discount_approval_count"
+                                   widget="statinfo" string="Discounts"/>
+                        </button>
+                        <button name="action_open_survey_feedback"
+                                type="object" class="oe_stat_button"
+                                icon="fa-star"
+                                invisible="feedback_count == 0">
+                            <field name="feedback_count"
+                                   widget="statinfo" string="Feedback"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="guest_id" placeholder="Guest Name"/></h1>
+                        <h3><field name="name" readonly="1"/></h3>
+                    </div>
+                    <group>
+                        <group string="Stay">
+                            <field name="source"/>
+                            <field name="room_type_id"/>
+                            <field name="room_id"
+                                   domain="[('room_type_id', '=', room_type_id), ('status', 'in', ('clean', 'inspected', 'available', 'reserved')), ('id', 'not in', booked_room_ids)]"/>
+                            <field name="checkin" string="Stay From"/>
+                            <field name="checkout" string="Stay To"/>
+                            <field name="nights"/>
+                            <field name="actual_checkin" string="Checked-in On"
+                                   invisible="not actual_checkin"/>
+                            <field name="actual_nights" invisible="not actual_nights"/>
+                            <field name="adults"/>
+                            <field name="children"/>
+                        </group>
+                        <group string="Charges">
+                            <field name="rate"/>
+                            <field name="discount"/>
+                            <field name="room_total"/>
+                            <field name="service_total"/>
+                            <field name="total" class="fw-bold"/>
+                            <field name="deposit"/>
+                            <field name="deposit_journal_id" string="Bank or Cash"
+                                   options="{'no_create': True, 'no_open': True}"
+                                   placeholder="Select Bank or Cash journal..."/>
+                            <button name="action_register_deposit" type="object"
+                                    string="Register Deposit" class="btn btn-sm btn-outline-primary"
+                                    invisible="not deposit or deposit_paid &gt;= deposit or state in ('checked_out', 'cancelled')"/>
+                            <field name="deposit_paid" invisible="not deposit_paid"/>
+                            <field name="balance_due" class="fw-bold text-primary" invisible="balance_due == 0 and refund_due &gt; 0"/>
+                            <field name="refund_due" class="fw-bold text-success" invisible="refund_due == 0"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Room Consumption" name="consumption">
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-6">
+                                    <div class="p-3 bg-light rounded border d-flex align-items-center">
+                                        <div class="me-3 text-primary">
+                                            <i class="fa fa-cutlery fa-2x" title="Minibar &amp; Room Consumption" aria-label="Minibar &amp; Room Consumption"/>
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold text-dark">Minibar &amp; Daily Room Consumption</div>
+                                            <div class="small text-muted">Daily guest consumables and minibar charges billed to this stay.</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="p-3 bg-light rounded border d-flex align-items-center">
+                                        <div class="me-3 text-info">
+                                            <i class="fa fa-check-square-o fa-2x" title="Housekeeping &amp; Inspections" aria-label="Housekeeping &amp; Inspections"/>
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold text-dark">Housekeeping &amp; Turnover Inspections</div>
+                                            <div class="small text-muted">Physical stock verification, replenishment, and damage or loss charges.</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <separator string="Daily Room Consumption Sessions"/>
+                            <field name="consumption_session_ids" readonly="1">
+                                <list string="Room Consumption Sessions" decoration-muted="state == 'draft'" decoration-success="state == 'posted'">
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="name" string="Reference" decoration-bf="1"/>
+                                    <field name="stay_date" string="Stay Date"/>
+                                    <field name="session_type" string="Type" optional="show"/>
+                                    <field name="employee_id" string="Recorded By" optional="show"/>
+                                    <field name="billable_line_count" string="Billable Items"/>
+                                    <field name="recorded_total" string="Recorded Value" widget="monetary" optional="hide"/>
+                                    <field name="total_charge" string="Guest Charge" widget="monetary" sum="Total Guest Charge" decoration-bf="1"/>
+                                    <field name="state" string="Status" widget="badge"
+                                           decoration-warning="state in ('draft', 'assigned')"
+                                           decoration-info="state in ('recorded', 'reviewed')"
+                                           decoration-success="state == 'posted'"/>
+                                </list>
+                            </field>
+                            <separator string="Room Turnover &amp; Housekeeping Inspections"/>
+                            <field name="inspection_ids" readonly="1">
+                                <list string="Room Inspections" decoration-muted="state == 'draft'" decoration-danger="state == 'cancelled'" decoration-success="state == 'approved'">
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="name" string="Reference" decoration-bf="1"/>
+                                    <field name="inspector_id" string="Inspected By" optional="show"/>
+                                    <field name="turnover_policy" string="Turnover Policy" widget="badge"
+                                           decoration-info="turnover_policy == 'replenish'"
+                                           decoration-warning="turnover_policy == 'carry_forward'"/>
+                                    <field name="inspection_at" string="Inspected On"/>
+                                    <field name="discrepancy_count" string="Discrepancies" optional="show" decoration-danger="discrepancy_count &gt; 0"/>
+                                    <field name="chargeable_total" string="Confirmed Charges" widget="monetary" sum="Total Confirmed Charges" decoration-bf="1"/>
+                                    <field name="state" string="Status" widget="badge"
+                                           decoration-secondary="state == 'draft'"
+                                           decoration-info="state == 'in_progress'"
+                                           decoration-warning="state == 'pending_review'"
+                                           decoration-success="state == 'approved'"
+                                           decoration-danger="state == 'cancelled'"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Extra Services" name="services">
+                            <separator string="Extra Services &amp; Special Requests"/>
+                            <field name="line_ids" context="{'default_reservation_id': id}">
+                                <list string="Extra Services" editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="service_type"/>
+                                    <field name="name"/>
+                                    <field name="product_id"/>
+                                    <field name="qty"/>
+                                    <field name="price_unit"/>
+                                    <field name="discount"/>
+                                    <field name="price_subtotal" sum="Total Services" widget="monetary" decoration-bf="1"/>
+                                    <field name="billable" widget="boolean_toggle"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Guest Registration" name="registration">
+                            <group>
+                                <group>
+                                    <field name="id_type"/>
+                                    <field name="id_number"/>
+                                    <field name="id_document"
+                                           filename="id_document_filename"
+                                           widget="binary"/>
+                                    <field name="id_document_filename" invisible="1"/>
+                                    <field name="nationality_id"/>
+                                    <field name="guest_phone" widget="phone"/>
+                                </group>
+                                <group>
+                                    <field name="actual_checkin"/>
+                                    <field name="actual_checkout"/>
+                                    <field name="registered_guests"/>
+                                </group>
+                            </group>
+                            <group string="Additional Guests">
+                                <field name="guest_line_ids" context="{'default_reservation_id': id}">
+                                    <list string="Additional Guests on this Stay"
+                                          editable="bottom">
+                                        <field name="guest_id" create_edit="1"/>
+                                        <field name="name"/>
+                                        <field name="phone" widget="phone"/>
+                                        <field name="id_type"/>
+                                        <field name="id_number"/>
+                                        <field name="nationality_id"/>
+                                        <field name="gender"/>
+                                        <field name="birth_date" optional="hide"/>
+                                        <field name="notes" optional="hide"/>
+                                    </list>
+                                </field>
+                            </group>
+                        </page>
+                        <page string="Invoices" name="invoices">
+                            <separator string="Guest Invoices"/>
+                            <field name="invoice_ids" readonly="1">
+                                <list string="Guest Invoices" decoration-muted="state == 'cancel'" decoration-success="state == 'posted'">
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="name" string="Number" decoration-bf="1"/>
+                                    <field name="invoice_date" string="Date"/>
+                                    <field name="amount_total" string="Total" widget="monetary" sum="Total Invoiced" decoration-bf="1"/>
+                                    <field name="amount_residual" string="Amount Due" widget="monetary" sum="Total Due"/>
+                                    <field name="payment_state" string="Payment Status" widget="badge"
+                                           decoration-success="payment_state in ('paid', 'in_payment')"
+                                           decoration-warning="payment_state == 'not_paid'"
+                                           decoration-danger="payment_state == 'reversed'"/>
+                                    <field name="state" string="Status" widget="badge"
+                                           decoration-info="state == 'draft'"
+                                           decoration-success="state == 'posted'"
+                                           decoration-danger="state == 'cancel'"/>
+                                </list>
+                            </field>
+                            <separator string="Advance Payments"/>
+                            <field name="deposit_payment_ids" readonly="1">
+                                <list string="Advance Payments" decoration-muted="state == 'cancel'" decoration-success="state == 'posted'">
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="date" string="Date"/>
+                                    <field name="name" string="Payment Reference" decoration-bf="1"/>
+                                    <field name="journal_id" string="Journal"/>
+                                    <field name="amount" string="Amount" widget="monetary" sum="Total Advance Payments" decoration-bf="1"/>
+                                    <field name="state" string="Status" widget="badge"
+                                           decoration-info="state == 'draft'"
+                                           decoration-success="state == 'posted'"
+                                           decoration-danger="state == 'cancel'"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Other Info" name="other">
+                            <group>
+                                <field name="company_id" groups="base.group_multi_company"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- Gantt requires Enterprise web_gantt; Community uses Room Board + Calendar. -->
+
+    <record id="hotel_reservation_view_calendar" model="ir.ui.view">
+        <field name="name">hotel.reservation.calendar</field>
+        <field name="model">hotel.reservation</field>
+        <field name="arch" type="xml">
+            <calendar string="Room Availability Calendar"
+                      date_start="checkin"
+                      date_stop="checkout"
+                      create_name_field="calendar_display_name"
+                      color="state"
+                      mode="month"
+                      quick_create="0"
+                      event_open_popup="1">
+                <field name="name" string="Reservation Number"/>
+                <field name="room_id" string="Room Number"/>
+                <field name="guest_id" string="Reserved By" avatar_field="avatar_128"/>
+                <field name="checkin" string="Check-in Date"/>
+                <field name="checkout" string="Check-out Date"/>
+                <field name="state" string="Reservation Status" filters="1"/>
+            </calendar>
+        </field>
+    </record>
+
+    <record id="hotel_reservation_view_kanban" model="ir.ui.view">
+        <field name="name">hotel.reservation.kanban</field>
+        <field name="model">hotel.reservation</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" quick_create="0" sample="1">
+                <field name="guest_id"/>
+                <field name="room_id"/>
+                <field name="total"/>
+                <field name="color_index"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="o_kanban_record_top">
+                            <div class="o_kanban_record_headings">
+                                <strong class="o_kanban_record_title"><field name="guest_id"/></strong>
+                                <small class="o_kanban_record_subtitle text-muted">
+                                    <field name="name"/>
+                                </small>
+                            </div>
+                        </div>
+                        <div class="o_kanban_record_body">
+                            <div><field name="room_id"/></div>
+                            <div class="text-muted">
+                                <field name="checkin" widget="remaining_days"/> →
+                                <field name="checkout" widget="remaining_days"/>
+                            </div>
+                        </div>
+                        <div class="o_kanban_record_bottom">
+                            <div class="o_kanban_record_bottom_left">
+                                <field name="total" widget="monetary"/>
+                            </div>
+                            <div class="o_kanban_record_bottom_right">
+                                <field name="activity_ids" widget="kanban_activity"/>
+                                <field name="message_needaction" widget="kanban_activity"/>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="hotel_reservation_view_pivot" model="ir.ui.view">
+        <field name="name">hotel.reservation.pivot</field>
+        <field name="model">hotel.reservation</field>
+        <field name="arch" type="xml">
+            <pivot string="Reservations" sample="1">
+                <field name="room_type_id" type="row"/>
+                <field name="state" type="col"/>
+                <field name="total" type="measure"/>
+                <field name="nights" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="hotel_reservation_view_graph" model="ir.ui.view">
+        <field name="name">hotel.reservation.graph</field>
+        <field name="model">hotel.reservation</field>
+        <field name="arch" type="xml">
+            <graph string="Room Revenue by Type" sample="1">
+                <field name="room_type_id"/>
+                <field name="total" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="hotel_reservation_view_search" model="ir.ui.view">
+        <field name="name">hotel.reservation.search</field>
+        <field name="model">hotel.reservation</field>
+        <field name="arch" type="xml">
+            <search string="Reservations">
+                <field name="name"/>
+                <field name="guest_id"/>
+                <field name="room_id"/>
+                <field name="room_type_id"/>
+                <filter name="filter_draft" string="Draft" domain="[('state','=','draft')]"/>
+                <filter name="filter_confirmed" string="Confirmed"
+                        domain="[('state','=','confirmed')]"/>
+                <filter name="filter_checked_in" string="Checked-in"
+                        domain="[('state','=','checked_in')]"/>
+                <filter name="filter_checked_out" string="Checked-out"
+                        domain="[('state','=','checked_out')]"/>
+                <separator/>
+                <filter name="filter_in_house" string="In House"
+                        domain="[('state','=','checked_in')]"/>
+                <filter name="filter_arrivals_today" string="Arrivals Today"
+                        domain="[('checkin','&gt;=', context_today().strftime('%Y-%m-%d 00:00:00')),
+                                ('checkin','&lt;=', context_today().strftime('%Y-%m-%d 23:59:59'))]"/>
+                <filter name="filter_departures_today" string="Departures Today"
+                        domain="[('checkout','&gt;=', context_today().strftime('%Y-%m-%d 00:00:00')),
+                                ('checkout','&lt;=', context_today().strftime('%Y-%m-%d 23:59:59'))]"/>
+                <separator/>
+                <filter name="filter_walkin" string="Books"
+                        domain="[('source','=','walkin')]"/>
+                <filter name="filter_walkin_today" string="Today's Walk-ins"
+                        domain="[('source','=','walkin'),
+                                 ('checkin','&gt;=', context_today().strftime('%Y-%m-%d 00:00:00')),
+                                 ('checkin','&lt;=', context_today().strftime('%Y-%m-%d 23:59:59'))]"/>
+                <separator/>
+                <filter name="filter_my_guests" string="My Guests"
+                        domain="[('guest_id','=',context.uid)]"/>
+                <group name="group_by">
+                    <filter string="Status" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Room" name="group_room" context="{'group_by': 'room_id'}"/>
+                    <filter string="Room Type" name="group_type"
+                            context="{'group_by': 'room_type_id'}"/>
+                    <filter string="Guest" name="group_guest" context="{'group_by': 'guest_id'}"/>
+                    <filter string="Booking Source" name="group_source"
+                            context="{'group_by': 'source'}"/>
+                    <filter string="Arrival Month" name="group_month"
+                            context="{'group_by': 'checkin:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="hotel_reservation_action" model="ir.actions.act_window">
+        <field name="name">Reservations</field>
+        <field name="res_model">hotel.reservation</field>
+        <field name="view_mode">list,form,kanban,calendar,pivot,graph</field>
+        <field name="search_view_id" ref="hotel_reservation_view_search"/>
+        <field name="context">{'search_default_filter_confirmed': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No reservation yet</p>
+            <p>Book a guest: pick the room type, the dates and one of the rooms that is free
+                for that stay. Use Room Board and the Availability Calendar under Front Desk
+                to see free rooms at a glance.</p>
+        </field>
+    </record>
+
+</odoo>

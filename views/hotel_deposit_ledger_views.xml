@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_hotel_deposit_ledger" model="ir.actions.client">
+        <field name="name">Deposit Ledger</field>
+        <field name="tag">hotel.deposit_ledger</field>
+    </record>
+
+    <record id="action_hotel_deposit_ledger_schedule" model="ir.actions.act_window">
+        <field name="name">Deposit Ledger Schedules</field>
+        <field name="res_model">hotel.deposit.ledger.schedule</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="hotel_deposit_ledger_schedule_view_list" model="ir.ui.view">
+        <field name="name">hotel.deposit.ledger.schedule.list</field>
+        <field name="model">hotel.deposit.ledger.schedule</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="frequency"/>
+                <field name="recipient_ids" widget="many2many_tags"/>
+                <field name="format"/>
+                <field name="last_sent"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="hotel_deposit_ledger_schedule_view_form" model="ir.ui.view">
+        <field name="name">hotel.deposit.ledger.schedule.form</field>
+        <field name="model">hotel.deposit.ledger.schedule</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="frequency"/>
+                        <field name="weekday" invisible="frequency != 'weekly'"/>
+                        <field name="format"/>
+                        <field name="recipient_ids" widget="many2many_tags"/>
+                        <field name="options_json"/>
+                        <field name="active"/>
+                        <field name="company_id"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

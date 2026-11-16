@@ -1,0 +1,145 @@
+<t t-name="hotel.DepositLedger">
+    <div class="o_hotel_deposit_ledger p-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <div>
+                <button class="btn btn-sm btn-secondary me-1" t-on-click="printPdf">PDF</button>
+                <button class="btn btn-sm btn-secondary me-1" t-on-click="exportExcel">Excel</button>
+                <button class="btn btn-sm btn-secondary" t-on-click="schedule">Schedule</button>
+            </div>
+            <h4 class="mb-0">Deposit Ledger</h4>
+            <div class="d-flex align-items-center">
+                <div class="dropdown me-2">
+                    <button class="btn btn-sm btn-light dropdown-toggle" t-on-click="() => state.optionsOpen = !state.optionsOpen">Options</button>
+                    <div t-if="state.optionsOpen" class="dropdown-menu show p-3" style="min-width:260px">
+                        <div class="mb-2">
+                            <label class="form-label small">Group by</label>
+                            <select class="form-select form-select-sm" t-on-change="(e) => setOption('group_by', e.target.value)">
+                                <option t-att-selected="state.options.group_by === 'arrival'" value="arrival">Arrival month</option>
+                                <option t-att-selected="state.options.group_by === 'booking'" value="booking">Booking month</option>
+                            </select>
+                        </div>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="inHouse" t-att-checked="state.options.include_checked_in !== false" t-on-change="(e) => setOption('include_checked_in', e.target.checked)"/>
+                            <label class="form-check-label small" for="inHouse">Include in-house stays</label>
+                        </div>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="checkedOut" t-att-checked="state.options.include_checked_out" t-on-change="(e) => setOption('include_checked_out', e.target.checked)"/>
+                            <label class="form-check-label small" for="checkedOut">Include checked-out stays</label>
+                        </div>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="noShow" t-att-checked="state.options.include_no_show" t-on-change="(e) => setOption('include_no_show', e.target.checked)"/>
+                            <label class="form-check-label small" for="noShow">Include no-shows</label>
+                        </div>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="cancelled" t-att-checked="state.options.include_cancelled" t-on-change="(e) => setOption('include_cancelled', e.target.checked)"/>
+                            <label class="form-check-label small" for="cancelled">Include cancelled</label>
+                        </div>
+                        <div class="mb-2 mt-2">
+                            <label class="form-label small">Paid by</label>
+                            <select class="form-select form-select-sm" t-on-change="(e) => setOption('paid_by', e.target.value)">
+                                <option t-att-selected="state.options.paid_by === 'all'" value="all">All</option>
+                                <option t-att-selected="state.options.paid_by === 'desk'" value="desk">Desk</option>
+                                <option t-att-selected="state.options.paid_by === 'online'" value="online">Online</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <input type="text" class="form-control form-control-sm" placeholder="Search the report" t-model="state.search"/>
+            </div>
+        </div>
+
+        <div t-if="state.data" class="mb-2">
+            <div class="text-uppercase small text-muted" t-esc="state.data.company"/>
+            <div class="text-muted small">
+                Advance deposits and prepayments held for upcoming bookings and in-house guests, tracked against stay charges until check-out.
+            </div>
+        </div>
+
+        <div t-if="state.data" class="row mb-3">
+            <div class="col-4">
+                <div class="border rounded p-2 bg-white">
+                    <div class="small text-uppercase text-muted">Deposits held</div>
+                    <div class="fs-4" t-esc="money(state.data.kpis.deposits_held)"/>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="border rounded p-2 bg-white">
+                    <div class="small text-uppercase text-muted">Active Bookings</div>
+                    <div class="fs-4" t-esc="state.data.kpis.bookings"/>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="border rounded p-2 bg-white">
+                    <div class="small text-uppercase text-muted">Arriving within <t t-esc="state.data.kpis.window_days"/> days</div>
+                    <div class="fs-4" t-esc="state.data.kpis.arriving_soon"/>
+                </div>
+            </div>
+        </div>
+
+        <div t-if="state.data">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Guest</th>
+                        <th>Booking</th>
+                        <th>Status</th>
+                        <th>Arrival</th>
+                        <th>Nights</th>
+                        <th class="text-end">Stay value</th>
+                        <th class="text-end">Deposit held</th>
+                        <th class="text-end">Still to pay</th>
+                        <th>Paid by</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <t t-foreach="groups" t-as="group" t-key="group.key">
+                        <tr class="table-secondary" t-on-click="() => toggle(group.key)">
+                            <td colspan="5">
+                                <strong><t t-esc="group.label"/> (<t t-esc="group.count"/>)</strong>
+                            </td>
+                            <td class="text-end"><strong t-esc="money(group.stay_value)"/></td>
+                            <td class="text-end"><strong t-esc="money(group.deposit_held)"/></td>
+                            <td class="text-end"><strong t-esc="money(group.still_to_pay)"/></td>
+                            <td></td>
+                        </tr>
+                        <t t-if="!state.collapsed[group.key]">
+                            <t t-foreach="group.rows" t-as="row" t-key="row.id">
+                                <tr>
+                                    <td t-esc="row.guest"/>
+                                    <td><a href="#" t-on-click.prevent="() => openBooking(row.id)" t-esc="row.booking"/></td>
+                                    <td>
+                                        <span t-if="row.status_key === 'checked_in'" class="badge bg-success">In-House</span>
+                                        <span t-elif="row.status_key === 'confirmed'" class="badge bg-primary">Confirmed</span>
+                                        <span t-elif="row.status_key === 'draft'" class="badge bg-secondary">Draft</span>
+                                        <span t-elif="row.status_key === 'checked_out'" class="badge bg-dark">Checked Out</span>
+                                        <span t-else="" class="badge bg-light text-dark" t-esc="row.status"/>
+                                    </td>
+                                    <td t-esc="row.arrival"/>
+                                    <td t-esc="row.nights"/>
+                                    <td class="text-end" t-esc="money(row.stay_value)"/>
+                                    <td class="text-end" t-esc="money(row.deposit_held)"/>
+                                    <td class="text-end">
+                                        <span t-if="row.still_to_pay &gt; 0" class="text-danger fw-bold" t-esc="money(row.still_to_pay)"/>
+                                        <span t-elif="row.remaining_deposit &gt; 0" class="text-success small">Covered (Credit: <t t-esc="money(row.remaining_deposit)"/>)</span>
+                                        <span t-else="" class="text-muted" t-esc="money(0)"/>
+                                    </td>
+                                    <td t-esc="row.paid_by"/>
+                                </tr>
+                            </t>
+                        </t>
+                    </t>
+                    <tr class="fw-bold border-top">
+                        <td colspan="5">Total</td>
+                        <td class="text-end" t-esc="money(state.data.totals.stay_value)"/>
+                        <td class="text-end" t-esc="money(state.data.totals.deposit_held)"/>
+                        <td class="text-end" t-esc="money(state.data.totals.still_to_pay)"/>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+            <p class="text-muted small mt-2">
+                Advance deposits held for upcoming bookings and currently in-house stays. Charges are deducted against the deposit until check-out settlement.
+            </p>
+        </div>
+    </div>
+</t>

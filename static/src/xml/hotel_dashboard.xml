@@ -1,0 +1,727 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="hotel.HotelReservationsDashboardTemplate" owl="1">
+        <div class="o_dashboard hotel_reservations_dashboard">
+            <!-- Header Section -->
+            <div class="dashboard-header d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+                <div class="d-flex align-items-center">
+                    <img src="/hotel/static/description/icon.png" alt="HOTEL" class="me-3" style="height: 48px; width: 48px;"/>
+                    <div>
+                        <h2 class="mb-0">
+                            <i class="fa fa-tachometer text-primary me-2"/>
+                            Hotel Reservations Dashboard
+                        </h2>
+                        <small class="text-muted">
+                            <span t-esc="getPeriodLabel()"/> - 
+                            <span t-esc="_getFormattedDate(state.dashboardData.period?.date_from)"/> to 
+                            <span t-esc="_getFormattedDate(state.dashboardData.period?.date_to)"/>
+                        </small>
+                    </div>
+                </div>
+                
+                <!-- Period Controls -->
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <select class="form-select form-select-sm" t-model="state.selectedPeriod" t-on-change="onPeriodChange">
+                        <option value="today">Today</option>
+                        <option value="yesterday">Yesterday</option>
+                        <option value="this_week">This Week</option>
+                        <option value="this_month">This Month</option>
+                        <option value="this_year">This Year</option>
+                        <option value="custom">Custom Period</option>
+                    </select>
+                    
+                    <div t-if="state.selectedPeriod === 'custom'" class="d-flex gap-2">
+                        <input type="date" class="form-control form-control-sm" 
+                               t-model="state.customDateFrom" 
+                               t-on-change="onCustomDateChange" 
+                               style="width: 140px;"/>
+                        <input type="date" class="form-control form-control-sm" 
+                               t-model="state.customDateTo" 
+                               t-on-change="onCustomDateChange" 
+                               style="width: 140px;"/>
+                    </div>
+                    
+                    <button class="btn btn-primary btn-sm" t-on-click="refreshDashboard">
+                        <i class="fa fa-refresh me-1"/>Refresh
+                    </button>
+                    <button class="btn btn-success btn-sm" t-on-click="onWalkinClick">
+                        <i class="fa fa-user-plus me-1"/>Book Guest
+                    </button>
+                </div>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div t-if="state.loading" class="d-flex justify-content-center p-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+
+            <!-- Error State -->
+            <div t-if="!state.loading and state.error" class="alert alert-danger text-center my-4">
+                <i class="fa fa-exclamation-triangle me-2"/>
+                <span t-esc="state.error"/>
+                <button class="btn btn-sm btn-outline-danger ms-3" t-on-click="refreshDashboard">
+                    <i class="fa fa-refresh me-1"/>Retry
+                </button>
+            </div>
+
+            <!-- Access Restricted State -->
+            <div t-if="!state.loading and !state.error and isRestricted()" class="alert alert-warning text-center my-4">
+                <i class="fa fa-lock me-2"/>
+                <span>You do not have access to hotel reservations. Ask your administrator for hotel dashboard rights.</span>
+            </div>
+
+            <!-- Dashboard Content -->
+            <div t-if="!state.loading and !state.error and !isRestricted()" class="dashboard-content">
+                <div t-if="!hasFigures()" class="alert alert-info text-center my-4">
+                    <i class="fa fa-info-circle me-2"/>
+                    <span>No reservation activity for this period yet.</span>
+                </div>
+
+                <!-- KPI Cards Row -->
+                <div class="row mb-4 g-3">
+                    <div class="col-xl-2 col-md-4">
+                        <div class="card kpi-card h-100" t-on-click="() => this.onKpiClick('action_open_total_reservations')">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="kpi-icon bg-primary text-white rounded-circle p-3 me-3">
+                                        <i class="fa fa-calendar-check-o fa-lg"/>
+                                    </div>
+                                    <div class="kpi-content flex-grow-1">
+                                        <h6 class="text-muted mb-1">Total Reservations</h6>
+                                        <h3 class="mb-1" t-esc="state.dashboardData.kpis.total_reservations?.value || 0"/>
+                                        <div class="kpi-change">
+                                            <small t-att-class="getChangeClass(state.dashboardData.kpis.total_reservations?.change)">
+                                                <i t-att-class="`fa ${getChangeIcon(state.dashboardData.kpis.total_reservations?.change)} me-1`"/>
+                                                <span t-esc="formatPercentage(state.dashboardData.kpis.total_reservations?.change)"/>
+                                                <span class="text-muted ms-1" t-esc="state.dashboardData.kpis.total_reservations?.label"/>
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-xl-2 col-md-4">
+                        <div class="card kpi-card h-100" t-on-click="() => this.onKpiClick('action_open_todays_arrivals')">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="kpi-icon bg-success text-white rounded-circle p-3 me-3">
+                                        <i class="fa fa-sign-in fa-lg"/>
+                                    </div>
+                                    <div class="kpi-content flex-grow-1">
+                                        <h6 class="text-muted mb-1">Today's Arrivals</h6>
+                                        <h3 class="mb-1" t-esc="state.dashboardData.kpis.arrivals_today?.value || 0"/>
+                                        <div class="kpi-change">
+                                            <small t-att-class="getChangeClass(state.dashboardData.kpis.arrivals_today?.change)">
+                                                <i t-att-class="`fa ${getChangeIcon(state.dashboardData.kpis.arrivals_today?.change)} me-1`"/>
+                                                <span t-esc="formatPercentage(state.dashboardData.kpis.arrivals_today?.change)"/>
+                                                <span class="text-muted ms-1" t-esc="state.dashboardData.kpis.arrivals_today?.label"/>
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-xl-2 col-md-4">
+                        <div class="card kpi-card h-100" t-on-click="() => this.onKpiClick('action_open_todays_departures')">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="kpi-icon bg-warning text-white rounded-circle p-3 me-3">
+                                        <i class="fa fa-sign-out fa-lg"/>
+                                    </div>
+                                    <div class="kpi-content flex-grow-1">
+                                        <h6 class="text-muted mb-1">Today's Departures</h6>
+                                        <h3 class="mb-1" t-esc="state.dashboardData.kpis.departures_today?.value || 0"/>
+                                        <div class="kpi-change">
+                                            <small t-att-class="getChangeClass(state.dashboardData.kpis.departures_today?.change)">
+                                                <i t-att-class="`fa ${getChangeIcon(state.dashboardData.kpis.departures_today?.change)} me-1`"/>
+                                                <span t-esc="formatPercentage(state.dashboardData.kpis.departures_today?.change)"/>
+                                                <span class="text-muted ms-1" t-esc="state.dashboardData.kpis.departures_today?.label"/>
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-xl-2 col-md-4">
+                        <div class="card kpi-card h-100" t-on-click="() => this.onKpiClick('action_open_pending_reservations')">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="kpi-icon bg-info text-white rounded-circle p-3 me-3">
+                                        <i class="fa fa-clock-o fa-lg"/>
+                                    </div>
+                                    <div class="kpi-content flex-grow-1">
+                                        <h6 class="text-muted mb-1">Pending Confirmations</h6>
+                                        <h3 class="mb-1" t-esc="state.dashboardData.kpis.pending_confirmations?.value || 0"/>
+                                        <div class="kpi-change">
+                                            <small t-att-class="getChangeClass(state.dashboardData.kpis.pending_confirmations?.change)">
+                                                <i t-att-class="`fa ${getChangeIcon(state.dashboardData.kpis.pending_confirmations?.change)} me-1`"/>
+                                                <span t-esc="formatPercentage(state.dashboardData.kpis.pending_confirmations?.change)"/>
+                                                <span class="text-muted ms-1" t-esc="state.dashboardData.kpis.pending_confirmations?.label"/>
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-2 col-md-4">
+                        <div class="card kpi-card h-100" t-on-click="() => this.onOccupancyClick()">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="kpi-icon bg-success text-white rounded-circle p-3 me-3">
+                                        <i class="fa fa-bed fa-lg"/>
+                                    </div>
+                                    <div class="kpi-content flex-grow-1">
+                                        <h6 class="text-muted mb-1">Occupancy</h6>
+                                        <h3 class="mb-1" t-esc="getOccupancyKpi().value"/>
+                                        <div class="kpi-change">
+                                            <small class="text-muted" t-esc="getOccupancyKpi().label"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-2 col-md-4">
+                        <div class="card kpi-card h-100" t-on-click="() => this.onRevenueClick()">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="kpi-icon bg-dark text-white rounded-circle p-3 me-3">
+                                        <i class="fa fa-money fa-lg"/>
+                                    </div>
+                                    <div class="kpi-content flex-grow-1">
+                                        <h6 class="text-muted mb-1">Revenue</h6>
+                                        <h3 class="mb-1" t-esc="getRevenueKpi().value"/>
+                                        <div class="kpi-change">
+                                            <small class="text-muted" t-esc="getRevenueKpi().label"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Operational & Cost KPIs -->
+                <div class="row mb-4 g-3">
+                    <div class="col-xl-4 col-md-4">
+                        <div class="card kpi-card h-100" t-on-click="() => this.onOperationsClick('minibar')">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="kpi-icon bg-primary text-white rounded-circle p-3 me-3">
+                                        <i class="fa fa-glass fa-lg"/>
+                                    </div>
+                                    <div class="kpi-content flex-grow-1">
+                                        <h6 class="text-muted mb-1">Minibar / Room Charge</h6>
+                                        <h3 class="mb-1" t-esc="formatCurrency(state.dashboardData.operations?.minibar_revenue?.value || 0)"/>
+                                        <div class="kpi-change">
+                                            <small class="text-muted">
+                                                <span t-esc="state.dashboardData.operations?.minibar_revenue?.count || 0"/> posted
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-4 col-md-4">
+                        <div class="card kpi-card h-100" t-on-click="() => this.onOperationsClick('discount')">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="kpi-icon bg-secondary text-white rounded-circle p-3 me-3">
+                                        <i class="fa fa-percent fa-lg"/>
+                                    </div>
+                                    <div class="kpi-content flex-grow-1">
+                                        <h6 class="text-muted mb-1">Approved Discounts</h6>
+                                        <h3 class="mb-1" t-esc="formatCurrency(state.dashboardData.operations?.discount_amount?.value || 0)"/>
+                                        <div class="kpi-change">
+                                            <small class="text-muted">
+                                                <span t-esc="state.dashboardData.operations?.discount_amount?.count || 0"/> approved
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-4 col-md-4">
+                        <div class="card kpi-card h-100" t-on-click="() => this.onOperationsClick('credit')">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="kpi-icon bg-dark text-white rounded-circle p-3 me-3">
+                                        <i class="fa fa-credit-card fa-lg"/>
+                                    </div>
+                                    <div class="kpi-content flex-grow-1">
+                                        <h6 class="text-muted mb-1">Credit Sales</h6>
+                                        <h3 class="mb-1" t-esc="formatCurrency(state.dashboardData.operations?.credit_sales?.value || 0)"/>
+                                        <div class="kpi-change">
+                                            <small class="text-muted">
+                                                <span t-esc="state.dashboardData.operations?.credit_sales?.count || 0"/> approved
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Occupancy and Room Status Row -->
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h6 class="mb-0">
+                                    <i class="fa fa-percent text-primary me-2"/>
+                                    Occupancy
+                                </h6>
+                            </div>
+                            <div class="card-body text-center">
+                                <div class="occupancy-donut mb-3" t-on-click="() => this.onOccupancyClick()">
+                                    <!-- SVG Donut Chart -->
+                                    <svg width="160" height="160" class="donut-chart">
+                                        <circle cx="80" cy="80" r="70" fill="none" stroke="#e9ecef" stroke-width="12"/>
+                                        <circle cx="80" cy="80" r="70" fill="none" 
+                                                stroke="#007bff" 
+                                                stroke-width="12" 
+                                                stroke-dasharray="440"
+                                                t-att-stroke-dashoffset="`${440 - (440 * (state.dashboardData.occupancy?.occupancy_rate || 0) / 100)}`"
+                                                transform="rotate(-90 80 80)"
+                                                class="occupancy-progress"/>
+                                        <text x="80" y="75" text-anchor="middle" class="occupancy-percentage-text">
+                                            <tspan t-esc="getOccupancyPercentage()"/>
+                                        </text>
+                                        <text x="80" y="95" text-anchor="middle" class="occupancy-label-text">
+                                            <tspan>Occupied</tspan>
+                                        </text>
+                                    </svg>
+                                </div>
+                                <div class="occupancy-details">
+                                    <small class="text-muted" t-esc="getOccupancyText()"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-8">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h6 class="mb-0">
+                                    <i class="fa fa-bed text-info me-2"/>
+                                    Room Status Overview
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row text-center">
+                                    <div class="col">
+                                        <div class="room-status-card status-available" t-on-click="() => this.onRoomStatusClick('available')">
+                                            <i class="fa fa-bed fa-2x text-success mb-2"/>
+                                            <div class="status-label">Available</div>
+                                            <div class="status-count" t-esc="state.dashboardData.room_status?.status_counts?.available || 0"/>
+                                            <div class="status-percentage" t-esc="formatPercentage(state.dashboardData.room_status?.status_percentages?.available)"/>
+                                        </div>
+                                    </div>
+                                    <div class="col">
+                                        <div class="room-status-card status-reserved" t-on-click="() => this.onRoomStatusClick('reserved')">
+                                            <i class="fa fa-bookmark fa-2x text-warning mb-2"/>
+                                            <div class="status-label">Reserved</div>
+                                            <div class="status-count" t-esc="state.dashboardData.room_status?.status_counts?.reserved || 0"/>
+                                            <div class="status-percentage" t-esc="formatPercentage(state.dashboardData.room_status?.status_percentages?.reserved)"/>
+                                        </div>
+                                    </div>
+                                    <div class="col">
+                                        <div class="room-status-card status-occupied" t-on-click="() => this.onRoomStatusClick('occupied')">
+                                            <i class="fa fa-user fa-2x text-primary mb-2"/>
+                                            <div class="status-label">Occupied</div>
+                                            <div class="status-count" t-esc="state.dashboardData.room_status?.status_counts?.occupied || 0"/>
+                                            <div class="status-percentage" t-esc="formatPercentage(state.dashboardData.room_status?.status_percentages?.occupied)"/>
+                                        </div>
+                                    </div>
+                                    <div class="col">
+                                        <div class="room-status-card status-dirty" t-on-click="() => this.onRoomStatusClick('dirty')">
+                                            <i class="fa fa-eraser fa-2x text-warning mb-2"/>
+                                            <div class="status-label">Dirty</div>
+                                            <div class="status-count" t-esc="state.dashboardData.room_status?.status_counts?.dirty || 0"/>
+                                            <div class="status-percentage" t-esc="formatPercentage(state.dashboardData.room_status?.status_percentages?.dirty)"/>
+                                        </div>
+                                    </div>
+                                    <div class="col">
+                                        <div class="room-status-card status-maintenance" t-on-click="() => this.onRoomStatusClick('maintenance')">
+                                            <i class="fa fa-wrench fa-2x text-danger mb-2"/>
+                                            <div class="status-label">Maintenance</div>
+                                            <div class="status-count" t-esc="state.dashboardData.room_status?.status_counts?.maintenance || 0"/>
+                                            <div class="status-percentage" t-esc="formatPercentage(state.dashboardData.room_status?.status_percentages?.maintenance)"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row -->
+
+
+                <!-- Front Desk and Recent Reservations Row -->
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h6 class="mb-0">
+                                    <i class="fa fa-desktop text-info me-2"/>
+                                    Front Desk Operations
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="front-desk-operations">
+                                    <div class="operation-item" t-on-click="() => this.onFrontDeskClick('arrivals')">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <div class="d-flex align-items-center">
+                                                <i class="fa fa-sign-in text-success me-2"/>
+                                                <span>Today's Arrivals</span>
+                                            </div>
+                                            <span class="badge bg-success" t-esc="state.dashboardData.front_desk?.arrivals || 0"/>
+                                        </div>
+                                    </div>
+                                    <div class="operation-item" t-on-click="() => this.onFrontDeskClick('departures')">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <div class="d-flex align-items-center">
+                                                <i class="fa fa-sign-out text-warning me-2"/>
+                                                <span>Today's Departures</span>
+                                            </div>
+                                            <span class="badge bg-warning" t-esc="state.dashboardData.front_desk?.departures || 0"/>
+                                        </div>
+                                    </div>
+                                    <div class="operation-item" t-on-click="() => this.onFrontDeskClick('checked_in')">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <div class="d-flex align-items-center">
+                                                <i class="fa fa-user text-primary me-2"/>
+                                                <span>Currently Checked-in</span>
+                                            </div>
+                                            <span class="badge bg-primary" t-esc="state.dashboardData.front_desk?.checked_in || 0"/>
+                                        </div>
+                                    </div>
+                                    <div class="operation-item" t-on-click="() => this.onFrontDeskClick('pending_confirmations')">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <div class="d-flex align-items-center">
+                                                <i class="fa fa-clock-o text-info me-2"/>
+                                                <span>Pending Confirmations</span>
+                                            </div>
+                                            <span class="badge bg-info" t-esc="state.dashboardData.front_desk?.pending_confirmations || 0"/>
+                                        </div>
+                                    </div>
+                                    <div class="operation-item" t-on-click="() => this.onFrontDeskClick('walkins_today')"
+                                         title="Walk-in reservations registered at the desk today">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <div class="d-flex align-items-center">
+                                                <i class="fa fa-user-plus text-success me-2"/>
+                                                <span>Books Today</span>
+                                            </div>
+                                            <span class="badge bg-success" t-esc="state.dashboardData.front_desk?.books_today || state.dashboardData.front_desk?.walkins_today || 0"/>
+                                        </div>
+                                    </div>
+                                    <div class="operation-item" t-on-click="() => this.onFrontDeskClick('arrived_today')"
+                                         title="Guests who completed check-in today (any source)">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <div class="d-flex align-items-center">
+                                                <i class="fa fa-key text-primary me-2"/>
+                                                <span>Arrived Today</span>
+                                            </div>
+                                            <span class="badge bg-primary" t-esc="state.dashboardData.front_desk?.arrived_today || 0"/>
+                                        </div>
+                                    </div>
+                                    <div class="operation-item" t-on-click="() => this.onFrontDeskClick('outstanding')">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <div class="d-flex align-items-center">
+                                                <i class="fa fa-money text-danger me-2"/>
+                                                <span>Outstanding Balances</span>
+                                            </div>
+                                            <span class="badge bg-danger">
+                                                <t t-esc="formatCurrency(state.dashboardData.front_desk?.outstanding || 0)"/>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-8">
+                        <div class="card h-100">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">
+                                    <i class="fa fa-calendar-o text-primary me-2"/>
+                                    Recent Reservations
+                                </h6>
+                                <a href="#" class="text-decoration-none" t-on-click="() => this.onViewAllReservations()">View All</a>
+                            </div>
+                            <div class="card-body p-0">
+                                <div t-if="!state.dashboardData.recent_reservations || state.dashboardData.recent_reservations.length === 0"
+                                     class="text-center text-muted p-4">
+                                    <i class="fa fa-calendar fa-2x mb-2"/>
+                                    <div>No recent reservations</div>
+                                </div>
+                                <div t-else="" class="table-responsive">
+                                    <table class="table table-hover mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Guest</th>
+                                                <th>Room</th>
+                                                <th>Check-in</th>
+                                                <th>Check-out</th>
+                                                <th>Status</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr t-foreach="state.dashboardData.recent_reservations" t-as="reservation" t-key="reservation.id"
+                                                class="cursor-pointer" t-on-click="() => this.onReservationClick(reservation)">
+                                                <td>
+                                                    <div class="fw-medium" t-esc="reservation.guest_name"/>
+                                                    <small class="text-muted" t-esc="reservation.name"/>
+                                                </td>
+                                                <td t-esc="reservation.room_number"/>
+                                                <td t-esc="reservation.checkin"/>
+                                                <td t-esc="reservation.checkout"/>
+                                                <td>
+                                                    <span t-att-class="`badge ${getReservationStatusClass(reservation.state)}`"
+                                                          t-esc="reservation.state_label"/>
+                                                </td>
+                                                <td>
+                                                    <i class="fa fa-chevron-right text-muted"/>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Front Desk Detail Tables -->
+                <div class="row mb-4 g-3">
+                    <div class="col-lg-6">
+                        <div class="card h-100">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">
+                                    <i class="fa fa-sign-in text-success me-2"/>
+                                    Arrivals Detail
+                                </h6>
+                                <a href="#" class="text-decoration-none small" t-on-click="() => this.onFrontDeskClick('arrivals')">View All</a>
+                            </div>
+                            <div class="card-body p-0">
+                                <div t-if="!state.dashboardData.arrivals || state.dashboardData.arrivals.length === 0"
+                                     class="text-center text-muted p-4">
+                                    <i class="fa fa-sign-in fa-2x mb-2"/>
+                                    <div>No arrivals expected today</div>
+                                </div>
+                                <div t-else="" class="table-responsive">
+                                    <table class="table table-hover mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Guest</th>
+                                                <th>Room</th>
+                                                <th>Guests</th>
+                                                <th>Check-in</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr t-foreach="state.dashboardData.arrivals" t-as="arrival" t-key="arrival.id"
+                                                class="cursor-pointer" t-on-click="() => this.onReservationClick(arrival)">
+                                                <td>
+                                                    <span class="fw-medium linkish" t-on-click.stop="() => this.onGuestClick(arrival)" t-esc="arrival.guest_name"/>
+                                                    <small class="text-muted d-block" t-esc="arrival.name"/>
+                                                </td>
+                                                <td>
+                                                    <span class="linkish" t-on-click.stop="() => this.onRoomClick(arrival)" t-esc="arrival.room_number"/>
+                                                </td>
+                                                <td t-esc="arrival.guests"/>
+                                                <td t-esc="arrival.checkin"/>
+                                                <td>
+                                                    <span t-att-class="`badge ${getReservationStatusClass(arrival.state)}`" t-esc="arrival.state_label"/>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-6">
+                        <div class="card h-100">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">
+                                    <i class="fa fa-sign-out text-warning me-2"/>
+                                    Departures Detail
+                                </h6>
+                                <a href="#" class="text-decoration-none small" t-on-click="() => this.onFrontDeskClick('departures')">View All</a>
+                            </div>
+                            <div class="card-body p-0">
+                                <div t-if="!state.dashboardData.departures || state.dashboardData.departures.length === 0"
+                                     class="text-center text-muted p-4">
+                                    <i class="fa fa-sign-out fa-2x mb-2"/>
+                                    <div>No departures due today</div>
+                                </div>
+                                <div t-else="" class="table-responsive">
+                                    <table class="table table-hover mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Guest</th>
+                                                <th>Room</th>
+                                                <th>Check-out</th>
+                                                <th>Balance</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr t-foreach="state.dashboardData.departures" t-as="departure" t-key="departure.id"
+                                                class="cursor-pointer" t-on-click="() => this.onReservationClick(departure)">
+                                                <td>
+                                                    <span class="fw-medium linkish" t-on-click.stop="() => this.onGuestClick(departure)" t-esc="departure.guest_name"/>
+                                                    <small class="text-muted d-block" t-esc="departure.name"/>
+                                                </td>
+                                                <td>
+                                                    <span class="linkish" t-on-click.stop="() => this.onRoomClick(departure)" t-esc="departure.room_number"/>
+                                                </td>
+                                                <td t-esc="departure.checkout"/>
+                                                <td>
+                                                    <span t-att-class="departure.outstanding ? 'text-danger fw-medium' : 'text-success'"
+                                                          t-esc="departure.outstanding ? formatCurrency(departure.outstanding) : getSettledLabel()"/>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Guest Property & Security -->
+                <div class="row mb-4 g-3" t-if="state.dashboardData.property?.total_properties">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">
+                                    <i class="fa fa-briefcase text-warning me-2"/>
+                                    Guest Property and Security
+                                </h6>
+                                <a href="#" class="text-decoration-none small" t-on-click="() => this.onPropertyClick('open')">View All</a>
+                            </div>
+                            <div class="card-body">
+                                <div class="row text-center g-3">
+                                    <div class="col-6 col-md-2">
+                                        <div class="property-counter" t-on-click="() => this.onPropertyClick('with_guest')">
+                                            <i class="fa fa-user text-primary"/>
+                                            <div class="status-count" t-esc="state.dashboardData.property?.with_guest || 0"/>
+                                            <div class="status-label">With Guest</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6 col-md-2">
+                                        <div class="property-counter" t-on-click="() => this.onPropertyClick('deposit_requested')">
+                                            <i class="fa fa-credit-card text-warning"/>
+                                            <div class="status-count" t-esc="state.dashboardData.property?.awaiting_deposit || 0"/>
+                                            <div class="status-label">Deposit Due</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6 col-md-2">
+                                        <div class="property-counter" t-on-click="() => this.onPropertyClick('safe')">
+                                            <i class="fa fa-shield text-success"/>
+                                            <div class="status-count" t-esc="state.dashboardData.property?.in_safe || 0"/>
+                                            <div class="status-label">In Safe</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6 col-md-2">
+                                        <div class="property-counter" t-on-click="() => this.onPropertyClick('ready_return')">
+                                            <i class="fa fa-undo text-info"/>
+                                            <div class="status-count" t-esc="state.dashboardData.property?.ready_return || 0"/>
+                                            <div class="status-label">Ready Return</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6 col-md-2">
+                                        <div class="property-counter" t-on-click="() => this.onPropertyClick('due_today')">
+                                            <i class="fa fa-calendar-check-o text-warning"/>
+                                            <div class="status-count" t-esc="state.dashboardData.property?.returns_due_today || 0"/>
+                                            <div class="status-label">Due Today</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6 col-md-2">
+                                        <div class="property-counter" t-on-click="() => this.onPropertyClick('overdue')">
+                                            <i class="fa fa-exclamation-circle text-danger"/>
+                                            <div class="status-count" t-esc="state.dashboardData.property?.overdue_returns || 0"/>
+                                            <div class="status-label">Overdue</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6 col-md-2">
+                                        <div class="property-counter" t-on-click="() => this.onPropertyClick('claims')">
+                                            <i class="fa fa-id-card text-info"/>
+                                            <div class="status-count" t-esc="state.dashboardData.property?.pending_claims || 0"/>
+                                            <div class="status-label">Claims to Verify</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6 col-md-2">
+                                        <div class="property-counter" t-on-click="() => this.onPropertyClick('lost_found')">
+                                            <i class="fa fa-search text-secondary"/>
+                                            <div class="status-count" t-esc="state.dashboardData.property?.open_lost_found || 0"/>
+                                            <div class="status-label">Lost and Found</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Alerts Row -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">
+                                    <i class="fa fa-exclamation-triangle text-danger me-2"/>
+                                    Operational Alerts
+                                </h6>
+                                <span class="badge bg-secondary" t-esc="state.dashboardData.alerts?.length || 0"/>
+                            </div>
+                            <div class="card-body">
+                                <div t-if="!state.dashboardData.alerts || state.dashboardData.alerts.length === 0"
+                                     class="text-center text-muted py-4">
+                                    <i class="fa fa-check-circle fa-3x text-success mb-3"/>
+                                    <div>All operations running smoothly</div>
+                                    <small class="text-muted">No active alerts or issues</small>
+                                </div>
+                                <div t-else="">
+                                    <div t-foreach="state.dashboardData.alerts" t-as="alert" t-key="alert_index"
+                                         t-att-class="`alert ${getAlertClass(alert.priority)} alert-sm d-flex justify-content-between align-items-center mb-2 cursor-pointer`"
+                                         t-on-click="() => this.onAlertClick(alert)">
+                                        <div class="d-flex align-items-center">
+                                            <i t-att-class="`fa ${alert.icon} me-2`"/>
+                                            <span t-esc="alert.message"/>
+                                        </div>
+                                        <i class="fa fa-chevron-right"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+
+</templates>

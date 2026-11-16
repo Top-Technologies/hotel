@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <record id="mail_activity_type_property_return" model="mail.activity.type">
+            <field name="name">Property Return Reminder</field>
+            <field name="icon">fa-briefcase</field>
+            <field name="delay_count">0</field>
+            <field name="delay_unit">days</field>
+            <field name="summary">Guest property expected return</field>
+        </record>
+
+        <record id="ir_cron_property_return_reminders" model="ir.cron">
+            <field name="name">Hotel: expected property return reminders</field>
+            <field name="model_id" ref="model_hotel_guest_property"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_expected_return_reminders()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active" eval="True"/>
+        </record>
+
+    </data>
+</odoo>

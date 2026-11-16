@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Housekeepers only see the tasks of the pool: unassigned ones and their own. -->
+        <record id="rule_hotel_housekeeping_task_own" model="ir.rule">
+            <field name="name">Housekeeping: pool and own tasks</field>
+            <field name="model_id" ref="model_hotel_housekeeping_task"/>
+            <field name="domain_force">
+                ['|',
+                 ('employee_id', '=', False),
+                 ('employee_id', '=', user.employee_id.id)]
+            </field>
+            <field name="groups" eval="[(4, ref('group_housekeeping'))]"/>
+        </record>
+
+        <!-- Receptionists and managers see the whole hotel: no rule needed. -->
+
+        <!-- Housekeepers record found items and follow up the ones they picked up;
+             reception, security and managers keep the full register. -->
+        <record id="rule_hotel_lost_found_own" model="ir.rule">
+            <field name="name">Lost &amp; Found: items recorded by me</field>
+            <field name="model_id" ref="model_hotel_lost_found"/>
+            <field name="domain_force">[('found_by_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_housekeeping'))]"/>
+        </record>
+
+        <record id="rule_hotel_lost_found_manager_all" model="ir.rule">
+            <field name="name">Lost &amp; Found: full register for managers</field>
+            <field name="model_id" ref="model_hotel_lost_found"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_hotel_manager'))]"/>
+        </record>
+
+        <!-- ===== Multi-Company Record Rules ===== -->
+        <!-- These rules are global (no group): every user only sees records of their allowed companies. -->
+
+        <record id="rule_hotel_reservation_company" model="ir.rule">
+            <field name="name">Hotel Reservation: company</field>
+            <field name="model_id" ref="model_hotel_reservation"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_hotel_room_type_company" model="ir.rule">
+            <field name="name">Hotel Room Type: company</field>
+            <field name="model_id" ref="model_hotel_room_type"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_hotel_room_company" model="ir.rule">
+            <field name="name">Hotel Room: company</field>
+            <field name="model_id" ref="model_hotel_room"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_hotel_room_consumption_company" model="ir.rule">
+            <field name="name">Hotel Room Consumption: company</field>
+            <field name="model_id" ref="model_hotel_room_consumption"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_hotel_room_service_company" model="ir.rule">
+            <field name="name">Hotel Room Service Order: company</field>
+            <field name="model_id" ref="model_hotel_room_service_order"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_hotel_housekeeping_task_company" model="ir.rule">
+            <field name="name">Hotel Housekeeping Task: company</field>
+            <field name="model_id" ref="model_hotel_housekeeping_task"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_hotel_complaint_company" model="ir.rule">
+            <field name="name">Hotel Complaint: company</field>
+            <field name="model_id" ref="model_hotel_complaint"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_hotel_room_inspection_company" model="ir.rule">
+            <field name="name">Hotel Room Inspection: company</field>
+            <field name="model_id" ref="model_hotel_room_inspection"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_hotel_supply_requisition_company" model="ir.rule">
+            <field name="name">Hotel Supply Requisition: company</field>
+            <field name="model_id" ref="model_hotel_supply_requisition"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_hotel_credit_approval_company" model="ir.rule">
+            <field name="name">Hotel Credit Approval: company</field>
+            <field name="model_id" ref="model_hotel_credit_approval"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_hotel_discount_approval_company" model="ir.rule">
+            <field name="name">Hotel Discount Approval: company</field>
+            <field name="model_id" ref="model_hotel_discount_approval"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_hotel_rate_change_company" model="ir.rule">
+            <field name="name">Hotel Rate Change: company</field>
+            <field name="model_id" ref="model_hotel_rate_change"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_hotel_lost_found_company" model="ir.rule">
+            <field name="name">Hotel Lost &amp; Found: company</field>
+            <field name="model_id" ref="model_hotel_lost_found"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_hotel_guest_property_company" model="ir.rule">
+            <field name="name">Hotel Guest Property: company</field>
+            <field name="model_id" ref="model_hotel_guest_property"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_hotel_safe_deposit_company" model="ir.rule">
+            <field name="name">Hotel Safe Deposit: company</field>
+            <field name="model_id" ref="model_hotel_safe_deposit"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_hotel_property_custody_company" model="ir.rule">
+            <field name="name">Hotel Property Custody: company</field>
+            <field name="model_id" ref="model_hotel_property_custody"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+    </data>
+</odoo>

@@ -1,0 +1,188 @@
+/* Hotel Housekeeping Kanban Styles - Scoped strictly to Housekeeping Kanban */
+
+.o_hotel_housekeeping_kanban {
+    &.o_kanban_view, .o_kanban_view {
+        .o_housekeeping_pending {
+            border-left: 3px solid #f0ad4e;
+            
+            .o_kanban_record_title {
+                color: #f0ad4e;
+            }
+        }
+        
+        .o_housekeeping_in_progress {
+            border-left: 3px solid #5bc0de;
+            
+            .o_kanban_record_title {
+                color: #5bc0de;
+            }
+        }
+        
+        .o_housekeeping_done {
+            border-left: 3px solid #5cb85c;
+            
+            .o_kanban_record_title {
+                color: #5cb85c;
+            }
+        }
+        
+        .o_housekeeping_inspected {
+            border-left: 3px solid #337ab7;
+            
+            .o_kanban_record_title {
+                color: #337ab7;
+            }
+        }
+        
+        .o_housekeeping_cancelled {
+            border-left: 3px solid #d9534f;
+            opacity: 0.7;
+            
+            .o_kanban_record_title {
+                color: #d9534f;
+                text-decoration: line-through;
+            }
+        }
+        
+        .o_housekeeping_overdue {
+            background-color: #fcf8e3;
+            border: 1px solid #faebcc;
+            
+            .o_kanban_record_title::after {
+                content: " ⚠️";
+                color: #f0ad4e;
+            }
+        }
+        
+        .o_housekeeping_urgent {
+            background-color: #f2dede;
+            border: 1px solid #ebccd1;
+            
+            .o_kanban_record_title::after {
+                content: " 🔥";
+                color: #d9534f;
+            }
+        }
+    }
+
+    /* Housekeeping Task Cards */
+    .o_kanban_record {
+        &.o_housekeeping_card {
+            .o_kanban_record_top {
+                padding-bottom: 5px;
+                border-bottom: 1px solid #e9ecef;
+                margin-bottom: 8px;
+            }
+            
+            .o_kanban_record_headings {
+                .o_kanban_record_title {
+                    font-size: 14px;
+                    font-weight: 600;
+                }
+                
+                .o_kanban_record_subtitle {
+                    font-size: 12px;
+                    color: #6c757d;
+                }
+            }
+            
+            .o_kanban_record_body {
+                padding: 5px 0;
+                
+                .text-muted {
+                    font-size: 11px;
+                }
+            }
+            
+            .o_kanban_record_bottom {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding-top: 5px;
+                border-top: 1px solid #e9ecef;
+                margin-top: 8px;
+                
+                .o_kanban_record_bottom_left {
+                    font-size: 12px;
+                    color: #6c757d;
+                }
+            }
+            
+            .o_kanban_record_buttons {
+                margin-top: 8px;
+                
+                button {
+                    margin-right: 4px;
+                    padding: 2px 8px;
+                    font-size: 11px;
+                    border-radius: 3px;
+                    
+                    &.btn-primary {
+                        background-color: #007bff;
+                        border-color: #007bff;
+                    }
+                    
+                    &.btn-success {
+                        background-color: #28a745;
+                        border-color: #28a745;
+                    }
+                    
+                    &.btn-warning {
+                        background-color: #ffc107;
+                        border-color: #ffc107;
+                        color: #212529;
+                    }
+                }
+            }
+        }
+    }
+
+    /* Kanban Column Styling */
+    .o_kanban_header {
+        .o_kanban_header_title {
+            font-weight: 600;
+            color: #495057;
+            
+            .o_column_title {
+                text-transform: capitalize;
+            }
+        }
+    }
+}
+
+/* Room status indicators */
+.o_housekeeping_room_status {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 5px;
+    
+    &.available {
+        background-color: #28a745;
+    }
+    
+    &.occupied {
+        background-color: #dc3545;
+    }
+    
+    &.dirty {
+        background-color: #ffc107;
+    }
+    
+    &.maintenance {
+        background-color: #6c757d;
+    }
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+    .o_hotel_housekeeping_kanban .o_kanban_record.o_housekeeping_card {
+        .o_kanban_record_buttons {
+            button {
+                font-size: 10px;
+                padding: 1px 6px;
+            }
+        }
+    }
+}

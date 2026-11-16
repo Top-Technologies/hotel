@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_print_room_service_ticket" model="ir.actions.report">
+        <field name="name">Room Service Ticket</field>
+        <field name="model">hotel.room.service.order</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">hotel.report_room_service_ticket</field>
+        <field name="report_file">hotel.report_room_service_ticket</field>
+        <field name="print_report_name">'Room Service - %s' % object.name</field>
+        <field name="binding_model_id" ref="model_hotel_room_service_order"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_room_service_ticket_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <div class="row">
+                            <div class="col-12">
+                                <h3 class="text-center">ROOM SERVICE TICKET</h3>
+                                <p class="text-center text-muted">
+                                    <span t-field="doc.company_id.name"/>
+                                </p>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-6">
+                                <strong>Order:</strong>
+                                <span t-field="doc.name"/><br/>
+                                <strong>Ordered on:</strong>
+                                <span t-field="doc.order_date"/><br/>
+                                <strong>Point of Sale:</strong>
+                                <span t-field="doc.config_id.name"/>
+                            </div>
+                            <div class="col-6">
+                                <strong>Room:</strong>
+                                <span t-field="doc.room_id.number"/><br/>
+                                <strong>Guest:</strong>
+                                <span t-field="doc.guest_id.name"/><br/>
+                                <strong>Reservation:</strong>
+                                <span t-field="doc.reservation_id.name"/><br/>
+                                <strong>Status:</strong>
+                                <span t-field="doc.state"/>
+                            </div>
+                        </div>
+                        <table class="table table-sm mt-3">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th class="text-end">Qty</th>
+                                    <th class="text-end">Unit Price</th>
+                                    <th class="text-end">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="doc.line_ids" t-as="line">
+                                    <td>
+                                        <span t-field="line.product_id"/>
+                                        <span t-if="line.note">
+                                            <br/>
+                                            <small class="text-muted" t-field="line.note"/>
+                                        </span>
+                                    </td>
+                                    <td class="text-end" t-field="line.qty"/>
+                                    <td class="text-end" t-field="line.price_unit"/>
+                                    <td class="text-end" t-field="line.price_subtotal"/>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <th colspan="3">Total</th>
+                                    <th class="text-end" t-field="doc.amount_total"/>
+                                </tr>
+                            </tfoot>
+                        </table>
+                        <div t-if="doc.note">
+                            <strong>Notes:</strong>
+                            <p t-field="doc.note"/>
+                        </div>
+                        <p t-if="doc.pos_order_id" class="text-muted">
+                            POS order <span t-field="doc.pos_order_id.name"/>
+                            <span t-if="doc.pos_reference">
+                                (<span t-field="doc.pos_reference"/>)
+                            </span>
+                            - charged to the guest folio.
+                        </p>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+</odoo>

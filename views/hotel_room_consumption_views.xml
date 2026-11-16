@@ -1,0 +1,360 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Room supply and guest consumption -->
+    <record id="hotel_room_consumption_view_list" model="ir.ui.view">
+        <field name="name">hotel.room.consumption.list</field>
+        <field name="model">hotel.room.consumption</field>
+        <field name="arch" type="xml">
+            <list string="Room Consumption">
+                <field name="name"/>
+                <field name="room_id"/>
+                <field name="guest_id" optional="show"/>
+                <field name="stay_date"/>
+                <field name="employee_id" optional="show"/>
+                <field name="billable_line_count" optional="hide"/>
+                <field name="recorded_total" optional="hide" sum="Recorded Value"/>
+                <field name="total_charge" optional="show" sum="Guest Charge"/>
+                <field name="picking_id" optional="hide"/>
+                <field name="refill_picking_id" optional="hide"/>
+                <field name="return_picking_id" optional="hide"/>
+                <field name="state" widget="badge"
+                       decoration-warning="state in ('draft','assigned')"
+                       decoration-info="state in ('recorded','reviewed')"
+                       decoration-success="state == 'posted'"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="hotel_room_consumption_view_form" model="ir.ui.view">
+        <field name="name">hotel.room.consumption.form</field>
+        <field name="model">hotel.room.consumption</field>
+        <field name="arch" type="xml">
+            <form string="Room Consumption" class="o_hotel_form">
+                <header>
+                    <button name="action_assign" type="object" string="Assign"
+                            class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_record" type="object" string="Record Consumption"
+                            class="btn-primary" invisible="state != 'assigned'"/>
+                    <button name="action_review" type="object" string="Review"
+                            class="btn-primary" invisible="state != 'recorded'"/>
+                    <button name="action_post" type="object" string="Post"
+                            class="btn-primary"
+                            groups="hotel.group_housekeeping_supervisor,hotel.group_hotel_manager"
+                            invisible="state != 'reviewed'"/>
+                    <button name="action_reset_to_draft" type="object" string="Reset to Draft"
+                            invisible="state in ('draft','posted')"/>
+                    <button name="action_start_next_day" type="object" string="Start Next Stay Day"
+                            invisible="state != 'posted'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,assigned,recorded,reviewed,posted"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_reservation" type="object"
+                                class="oe_stat_button" icon="fa-calendar">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">Reservation</span>
+                            </div>
+                        </button>
+                        <button name="action_open_picking" type="object"
+                                class="oe_stat_button" icon="fa-truck"
+                                invisible="not picking_id">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">Inventory Movement</span>
+                            </div>
+                        </button>
+                        <button name="action_open_refill_picking" type="object"
+                                class="oe_stat_button" icon="fa-refresh"
+                                invisible="not refill_picking_id">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">Room Refill</span>
+                            </div>
+                        </button>
+                        <button name="action_open_return_picking" type="object"
+                                class="oe_stat_button" icon="fa-undo"
+                                invisible="not return_picking_id">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">Supply Return</span>
+                            </div>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                        <h3>Room <field name="room_id"/></h3>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="reservation_id"/>
+                            <field name="guest_id"/>
+                            <field name="room_id"/>
+                            <field name="stay_date"/>
+                        </group>
+                        <group>
+                            <field name="employee_id"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="recorded_total"/>
+                            <field name="total_charge"/>
+                            <field name="billable_line_count"/>
+                            <field name="picking_id" readonly="1"/>
+                            <field name="refill_picking_id" readonly="1" invisible="not refill_picking_id"/>
+                            <field name="return_picking_id" readonly="1"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Consumption Lines" name="lines">
+                            <field name="line_ids">
+                                <list editable="bottom" string="Consumption Lines">
+                                    <field name="consumption_id" column_invisible="1"/>
+                                    <field name="reservation_id" column_invisible="1" optional="hide"/>
+                                    <field name="room_id" column_invisible="1" optional="hide"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="product_id" domain="[('hotel_consumption_ok', '=', True)]" options="{'no_create': True}"/>
+                                    <field name="standard_qty" string="Standard Amount"/>
+                                    <field name="provided_qty" string="Transfer"/>
+                                    <field name="consumed_qty" string="Used"/>
+                                    <field name="price_unit" string="Unit Price"/>
+                                    <field name="guest_charge" string="Total Price Used (Billable)" sum="Total Billable"/>
+                                    <field name="unused_qty" string="Remaining Stock in Room" optional="show"/>
+                                    <field name="chargeable_qty" string="Billable Qty" optional="show"/>
+                                    <field name="policy" optional="show"/>
+                                    <field name="allowance_scope" string="Scope" optional="show"/>
+                                    <field name="remaining_allowance_qty" string="Remaining Free Allowance" optional="show"/>
+                                    <field name="opening_qty" string="Opening Qty" optional="hide"/>
+                                    <field name="complimentary_qty" string="Complimentary Qty" optional="hide"/>
+                                    <field name="recorded_value" string="Total Value Used" optional="hide"/>
+                                    <field name="charge_product_id" optional="hide"/>
+                                    <field name="folio_line_id" optional="hide"/>
+                                    <field name="invoice_line_id" optional="hide"/>
+                                    <field name="notes" optional="show"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Notes" name="notes">
+                            <field name="notes" placeholder="Observations of the room stock..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="hotel_room_consumption_view_search" model="ir.ui.view">
+        <field name="name">hotel.room.consumption.search</field>
+        <field name="model">hotel.room.consumption</field>
+        <field name="arch" type="xml">
+            <search string="Room Consumption">
+                <field name="name"/>
+                <field name="room_id"/>
+                <field name="guest_id"/>
+                <field name="employee_id"/>
+                <field name="reservation_id"/>
+                <field name="line_ids" string="Product"
+                        filter_domain="['|',('line_ids.product_id','ilike',self),('line_ids.product_categ_id','ilike',self)]"/>
+                <filter name="filter_draft" string="Draft"
+                        domain="[('state','in',('draft','assigned'))]"/>
+                <filter name="filter_pending_review" string="Awaiting Review"
+                        domain="[('state','in',('recorded','reviewed'))]"/>
+                <filter name="filter_posted" string="Posted"
+                        domain="[('state','=','posted')]"/>
+                <separator/>
+                <filter name="filter_today" string="Today"
+                        domain="[('stay_date','=',context_today().strftime('%Y-%m-%d'))]"/>
+                <filter name="filter_billable" string="Chargeable"
+                        domain="[('billable_line_count','>',0)]"/>
+                <separator/>
+                <filter name="filter_chargeable" string="Has Chargeable Items"
+                        domain="[('line_ids.policy','=','chargeable')]"/>
+                <filter name="filter_allowance" string="Has Allowances"
+                        domain="[('line_ids.policy','=','allowance')]"/>
+                <filter name="filter_complimentary" string="Has Complimentary Items"
+                        domain="[('line_ids.policy','=','complimentary')]"/>
+                <group name="group_by">
+                    <filter string="Status" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Stay Date" name="group_stay_date" context="{'group_by': 'stay_date:month'}"/>
+                    <filter string="Room" name="group_room" context="{'group_by': 'room_id'}"/>
+                    <filter string="Employee" name="group_employee" context="{'group_by': 'employee_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="hotel_room_consumption_view_pivot" model="ir.ui.view">
+        <field name="name">hotel.room.consumption.pivot</field>
+        <field name="model">hotel.room.consumption</field>
+        <field name="arch" type="xml">
+            <pivot string="Room Consumption" sample="1">
+                <field name="room_id" type="row"/>
+                <field name="stay_date" type="col"/>
+                <field name="recorded_total" type="measure"/>
+                <field name="total_charge" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="hotel_room_consumption_action" model="ir.actions.act_window">
+        <field name="name">Room Consumption</field>
+        <field name="res_model">hotel.room.consumption</field>
+        <field name="view_mode">list,form,pivot</field>
+        <field name="search_view_id" ref="hotel_room_consumption_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Record minibar and room supplies consumption
+            </p>
+        </field>
+    </record>
+
+    <!-- Room Consumption Inspections -->
+    <record id="hotel_room_inspection_view_form" model="ir.ui.view">
+        <field name="name">hotel.room.inspection.form</field>
+        <field name="model">hotel.room.inspection</field>
+        <field name="arch" type="xml">
+            <form string="Room Consumption Inspection" class="o_hotel_form">
+                <header>
+                    <button name="action_start" type="object" string="Start Inspection"
+                            class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_submit" type="object" string="Submit for Review"
+                            class="btn-primary" invisible="state not in ('draft', 'in_progress')"/>
+                    <button name="action_approve" type="object" string="Approve"
+                            class="btn-success"
+                            groups="hotel.group_housekeeping_supervisor,hotel.group_hotel_manager"
+                            invisible="state not in ('pending_review', 'in_progress', 'draft')"/>
+                    <button name="action_reject" type="object" string="Send Back"
+                            groups="hotel.group_housekeeping_supervisor,hotel.group_hotel_manager"
+                            invisible="state != 'pending_review'"/>
+                    <button name="action_open_checkout" type="object" string="Check-out Guest"
+                            class="btn-primary" invisible="state != 'approved'"/>
+                    <button name="action_cancel" type="object" string="Cancel"
+                            invisible="state == 'approved'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,in_progress,pending_review,approved"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_reservation" type="object"
+                                class="oe_stat_button" icon="fa-calendar">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">Reservation</span>
+                            </div>
+                        </button>
+                        <button name="action_open_replenishment" type="object"
+                                class="oe_stat_button" icon="fa-truck"
+                                invisible="not replenishment_picking_id">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">Replenishment</span>
+                            </div>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                        <h3>Room <field name="room_id" readonly="1"/></h3>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="reservation_id" readonly="1"/>
+                            <field name="guest_id" readonly="1"/>
+                            <field name="consumption_id" readonly="1"/>
+                            <field name="inspector_id"/>
+                            <field name="inspection_at"/>
+                        </group>
+                        <group>
+                            <field name="turnover_policy"/>
+                            <field name="policy_reason" invisible="turnover_policy == 'replenish'"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="discrepancy_count"/>
+                            <field name="chargeable_total"/>
+                            <field name="applied_at" readonly="1" invisible="not applied_at"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Inspection Lines" name="lines">
+                            <field name="line_ids">
+                                <list editable="bottom" string="Inspection Lines"
+                                      decoration-danger="discrepancy_type in ('missing', 'damaged')"
+                                      decoration-warning="discrepancy_type == 'extra'"
+                                      decoration-success="discrepancy_type == 'none'">
+                                    <field name="product_id" readonly="1"/>
+                                    <field name="standard_qty" optional="show" readonly="1"/>
+                                    <field name="expected_remaining_qty" readonly="1"/>
+                                    <field name="actual_remaining_qty"/>
+                                    <field name="variance_qty"/>
+                                    <field name="discrepancy_type"/>
+                                    <field name="reason" optional="show"/>
+                                    <field name="confirmed_qty"/>
+                                    <field name="unit_price" optional="show" readonly="1"/>
+                                    <field name="confirmed_charge"/>
+                                    <field name="approval_state" optional="show" widget="badge"
+                                           decoration-info="approval_state == 'pending'"
+                                           decoration-success="approval_state == 'approved'"
+                                           decoration-danger="approval_state == 'rejected'"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Notes" name="notes">
+                            <field name="notes" placeholder="Inspector observations..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="hotel_room_inspection_view_list" model="ir.ui.view">
+        <field name="name">hotel.room.inspection.list</field>
+        <field name="model">hotel.room.inspection</field>
+        <field name="arch" type="xml">
+            <list string="Room Consumption Inspections"
+                  decoration-muted="state == 'draft'"
+                  decoration-info="state in ('in_progress', 'pending_review')"
+                  decoration-success="state == 'approved'"
+                  decoration-danger="state == 'cancelled'">
+                <field name="name"/>
+                <field name="room_id"/>
+                <field name="guest_id"/>
+                <field name="reservation_id"/>
+                <field name="inspector_id"/>
+                <field name="inspection_at"/>
+                <field name="discrepancy_count"/>
+                <field name="chargeable_total"/>
+                <field name="turnover_policy" optional="show"/>
+                <field name="state" widget="badge"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="hotel_room_inspection_view_search" model="ir.ui.view">
+        <field name="name">hotel.room.inspection.search</field>
+        <field name="model">hotel.room.inspection</field>
+        <field name="arch" type="xml">
+            <search string="Room Inspections">
+                <field name="name"/>
+                <field name="room_id"/>
+                <field name="guest_id"/>
+                <field name="reservation_id"/>
+                <filter name="filter_pending" string="Pending Review"
+                        domain="[('state', '=', 'pending_review')]"/>
+                <filter name="filter_approved" string="Approved"
+                        domain="[('state', '=', 'approved')]"/>
+                <filter name="filter_discrepancies" string="With Discrepancies"
+                        domain="[('line_ids.discrepancy_type', '!=', 'none')]"/>
+                <group name="group_by">
+                    <filter string="Room" name="group_room" context="{'group_by': 'room_id'}"/>
+                    <filter string="Status" name="group_state" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="hotel_room_inspection_action" model="ir.actions.act_window">
+        <field name="name">Room Consumption Inspections</field>
+        <field name="res_model">hotel.room.inspection</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="hotel_room_inspection_view_search"/>
+    </record>
+
+</odoo>

@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <record id="discount_rule_corp_std" model="hotel.discount.rule">
+            <field name="name">Corporate Partner Standard</field>
+            <field name="program">corporate</field>
+            <field name="max_discount_pct">10.0</field>
+            <field name="approver_level">manager</field>
+            <field name="note">Standard negotiated discount for corporate partners and registered local companies.</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="discount_rule_corp_exec" model="hotel.discount.rule">
+            <field name="name">Corporate Executive Tier 1</field>
+            <field name="program">corporate</field>
+            <field name="max_discount_pct">20.0</field>
+            <field name="approver_level">general_manager</field>
+            <field name="note">Contracted volume tier for multinational corporations, embassies, and top enterprise clients.</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="discount_rule_group" model="hotel.discount.rule">
+            <field name="name">Conference &amp; Event Group (5+ Rooms)</field>
+            <field name="program">group</field>
+            <field name="max_discount_pct">15.0</field>
+            <field name="approver_level">manager</field>
+            <field name="note">Group rates for workshops, conference delegates, weddings, and group tour bookings.</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="discount_rule_gov" model="hotel.discount.rule">
+            <field name="name">Government &amp; NGO Official Rate</field>
+            <field name="program">government</field>
+            <field name="max_discount_pct">15.0</field>
+            <field name="approver_level">manager</field>
+            <field name="note">Applicable to Ethiopian federal ministries, UN agencies, public sector officials, and registered NGOs.</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="discount_rule_agent" model="hotel.discount.rule">
+            <field name="name">Travel Agent / Tour Operator Wholesale</field>
+            <field name="program">travel_agent</field>
+            <field name="max_discount_pct">15.0</field>
+            <field name="approver_level">manager</field>
+            <field name="note">Wholesale contracted rate for licensed incoming tour operators and IATA travel agents.</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="discount_rule_loyalty_std" model="hotel.discount.rule">
+            <field name="name">Loyalty Club Frequent Guest</field>
+            <field name="program">loyalty</field>
+            <field name="max_discount_pct">10.0</field>
+            <field name="approver_level">manager</field>
+            <field name="note">Direct booking discount for enrolled loyalty members and returning frequent visitors.</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="discount_rule_loyalty_long" model="hotel.discount.rule">
+            <field name="name">Long Stay Residence (7+ Nights)</field>
+            <field name="program">loyalty</field>
+            <field name="max_discount_pct">20.0</field>
+            <field name="approver_level">general_manager</field>
+            <field name="note">Extended stay rate for guests staying continuous 7 nights or longer.</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="discount_rule_promo" model="hotel.discount.rule">
+            <field name="name">Seasonal Special / Early Bird Offer</field>
+            <field name="program">promotional</field>
+            <field name="max_discount_pct">15.0</field>
+            <field name="approver_level">manager</field>
+            <field name="note">Promotional campaigns for low season occupancy drives and advance reservations booked 30+ days ahead.</field>
+            <field name="active">True</field>
+        </record>
+
+        <record id="discount_rule_gm" model="hotel.discount.rule">
+            <field name="name">GM Discretionary &amp; VIP Courtesy</field>
+            <field name="program">other</field>
+            <field name="max_discount_pct">30.0</field>
+            <field name="approver_level">general_manager</field>
+            <field name="note">Reserved strictly for General Manager authorization: VIP dignitaries, board delegates, or critical service recovery.</field>
+            <field name="active">True</field>
+        </record>
+
+    </data>
+</odoo>

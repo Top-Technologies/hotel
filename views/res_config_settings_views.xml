@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="res_config_settings_view_form_hotel" model="ir.ui.view">
+        <field name="name">res.config.settings.form.hotel</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority">90</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app data-string="Hotel" string="Hotel" name="hotel"
+                     groups="hotel.group_hotel_manager">
+
+                    <block title="Reservations &amp; Front Desk" name="reservations_block">
+                        <setting id="hotel_default_checkin_setting"
+                                 string="Default Check-in / Check-out Times"
+                                 help="Standard arrival and departure hours used when creating reservations.">
+                            <div class="content-group">
+                                <div class="o_row">
+                                    <label for="hotel_default_checkin_time" string="Check-in:"/>
+                                    <field name="hotel_default_checkin_time" widget="float_time"/>
+                                    <label for="hotel_default_checkout_time" string="Check-out:"/>
+                                    <field name="hotel_default_checkout_time" widget="float_time"/>
+                                </div>
+                            </div>
+                        </setting>
+                        <setting id="hotel_default_duration_setting"
+                                 string="Default Booking Duration"
+                                 help="Initial number of nights suggested when creating a new reservation.">
+                            <div class="content-group">
+                                <div class="o_row">
+                                    <field name="hotel_default_booking_duration"/>
+                                    <span>night(s)</span>
+                                </div>
+                            </div>
+                        </setting>
+                        <setting id="hotel_reservation_confirmation_policy_setting"
+                                 string="Confirmation Policy"
+                                 help="When reservations become confirmed: manually, upon receiving a deposit payment, or automatically on creation.">
+                            <field name="hotel_reservation_confirmation_policy"/>
+                        </setting>
+                        <setting id="hotel_cancellation_policy_setting"
+                                 string="Cancellation Policy"
+                                 help="Standard hotel policy applied when reservations are cancelled.">
+                            <field name="hotel_cancellation_policy"/>
+                        </setting>
+                        <setting id="hotel_default_reservation_state_setting"
+                                 string="Default Reservation Status"
+                                 help="Initial state for new reservations when created.">
+                            <field name="hotel_default_reservation_state"/>
+                        </setting>
+                    </block>
+
+                    <block title="Housekeeping" name="housekeeping_block">
+                        <setting id="hotel_auto_housekeeping_setting"
+                                 string="Housekeeping Task on Check-out"
+                                 help="Create a cleaning task automatically when a guest checks out.">
+                            <field name="hotel_auto_housekeeping_on_checkout"/>
+                        </setting>
+                        <setting id="hotel_require_inspection_setting"
+                                 string="Require Cleaning Inspection"
+                                 help="When enabled, a cleaned room stays out of the sellable pool until a supervisor inspects it.">
+                            <field name="hotel_require_inspection"/>
+                        </setting>
+                        <setting id="hotel_housekeeping_department_setting"
+                                 string="Housekeeping Team"
+                                 help="Team acting as the housekeeping pool. When it has a single member, cleaning tasks are assigned automatically.">
+                            <field name="hotel_housekeeping_department_id"
+                                   options="{'no_create': True}"/>
+                        </setting>
+                        <setting id="hotel_turnover_policy_setting"
+                                 string="Default Room Turnover Policy"
+                                 help="How a room is prepared for the next guest after check-out.">
+                            <field name="hotel_turnover_policy"/>
+                        </setting>
+                    </block>
+
+                    <block title="Accounting &amp; Invoicing" name="accounting_block">
+                        <setting id="hotel_sales_journal_setting"
+                                 string="Hotel Sales Journal"
+                                 help="Journal used to create customer invoices for guest folios. Empty means the company default sales journal.">
+                            <field name="hotel_sales_journal_id"
+                                   options="{'no_create': True}"/>
+                        </setting>
+                        <setting id="hotel_checkout_journal_setting"
+                                 string="Check-out Payment Journal"
+                                 help="Journal used to settle the guest balance at check-out. Empty means the first bank or cash journal.">
+                            <field name="hotel_checkout_journal_id"
+                                   options="{'no_create': True}"/>
+                        </setting>
+                        <setting id="hotel_deposit_journal_setting"
+                                 string="Deposit Payment Journal"
+                                 help="Journal used to collect advance deposits at booking or check-in. Empty falls back to check-out payment journal.">
+                            <field name="hotel_deposit_journal_id"
+                                   options="{'no_create': True}"/>
+                        </setting>
+                        <setting id="hotel_room_charge_journal_setting"
+                                 string="Room Charge Journal"
+                                 help="Bank or cash journal used for room charge and POS folio settlements.">
+                            <field name="hotel_room_charge_journal_id"
+                                   options="{'no_create': True}"/>
+                        </setting>
+                        <setting id="hotel_income_account_setting"
+                                 string="Room Revenue Account"
+                                 help="Default income account credited for room accommodation when not specified on the room type or product.">
+                            <field name="hotel_income_account_id"
+                                   options="{'no_create': True}"/>
+                        </setting>
+                        <setting id="hotel_receivable_account_setting"
+                                 string="Hotel Receivable Account"
+                                 help="Default customer receivable account for hotel guests.">
+                            <field name="hotel_receivable_account_id"
+                                   options="{'no_create': True}"/>
+                        </setting>
+                        <setting id="hotel_room_charge_clearing_setting"
+                                 string="Room Charge Clearing Account"
+                                 help="Clearing account used to bridge Point of Sale and room service orders to the guest folio.">
+                            <field name="hotel_room_charge_clearing_account_id"
+                                   options="{'no_create': True}"/>
+                        </setting>
+                        <setting id="hotel_default_product_setting"
+                                 string="Default Room Revenue Product"
+                                 help="Default service product invoiced for room stays if the room type has no specific product assigned.">
+                            <field name="hotel_default_product_id"
+                                   options="{'no_create': True}"/>
+                        </setting>
+                        <setting id="hotel_default_tax_setting"
+                                 string="Default Room Taxes"
+                                 help="Default customer taxes applied to room charges if not configured on the room type or product.">
+                            <field name="hotel_default_tax_ids" widget="many2many_tags"
+                                   options="{'no_create': True}"/>
+                        </setting>
+                    </block>
+
+                    <block title="Room Service &amp; POS" name="room_service_block">
+                        <setting id="hotel_pos_room_service_config_setting"
+                                 string="Room Service Point of Sale"
+                                 help="Point of Sale receiving food orders taken from the Room Service screen.">
+                            <field name="hotel_pos_room_service_config_id" options="{'no_create': True}"/>
+                        </setting>
+                        <setting id="hotel_room_charge_payment_method_setting"
+                                 string="Room Charge Payment Method"
+                                 help="POS payment method used to charge restaurant and room service orders to the guest folio.">
+                            <field name="hotel_room_charge_payment_method_id" options="{'no_create': True}"/>
+                        </setting>
+                        <setting id="hotel_room_service_product_setting"
+                                 string="Room Service Folio Product"
+                                 help="Service product carrying room service food charges on the guest folio invoice.">
+                            <field name="hotel_room_service_product_id" options="{'no_create': True}"/>
+                        </setting>
+                    </block>
+
+                    <block title="Rooms &amp; Stock" name="rooms_stock_block">
+                        <setting id="hotel_room_location_setting"
+                                 string="Hotel Rooms Location"
+                                 help="Inventory location holding supplies and minibar stock kept in the guest rooms.">
+                            <field name="hotel_room_location_id"
+                                   options="{'no_create': True}"/>
+                        </setting>
+                        <setting id="hotel_consumption_location_setting"
+                                 string="Room Consumption Location"
+                                 help="Destination of posted room consumption. Standard stock valuation relieves inventory from this location.">
+                            <field name="hotel_consumption_location_id"
+                                   options="{'no_create': True}"/>
+                        </setting>
+                        <setting id="hotel_kitchen_location_setting"
+                                 string="Hotel Kitchen Location"
+                                 help="Kitchen or F&amp;B store location holding ingredients and prepared items.">
+                            <field name="hotel_kitchen_location_id"
+                                   options="{'no_create': True}"/>
+                        </setting>
+                        <setting id="hotel_storeroom_location_setting"
+                                 string="Hotel Storeroom Location"
+                                 help="Main internal storeroom location from which guest rooms are replenished.">
+                            <field name="hotel_storeroom_location_id"
+                                   options="{'no_create': True}"/>
+                        </setting>
+                        <setting id="hotel_housekeeping_cart_location_setting"
+                                 string="Housekeeping Cart Location"
+                                 help="Buffer stock location holding supplies on the housekeeping trolley/cart. Rooms are refilled from this location.">
+                            <field name="hotel_housekeeping_cart_location_id"
+                                   options="{'no_create': True}"/>
+                        </setting>
+                        <setting id="hotel_internal_picking_type_setting"
+                                 string="Room Supplies Operation Type"
+                                 help="Internal transfer operation type used to move supplies out of rooms or replenish them.">
+                            <field name="hotel_internal_picking_type_id"
+                                   options="{'no_create': True}"/>
+                        </setting>
+                    </block>
+
+                    <block title="Room Consumption Defaults" name="room_consumption_defaults_block">
+                        <setting id="hotel_consumable_standard_qty_setting"
+                                 string="Standard Par Level Quantity"
+                                 help="Fallback par level quantity placed in rooms when not specified on room or room type.">
+                            <field name="hotel_consumable_standard_qty"/>
+                        </setting>
+                        <setting id="hotel_consumable_allowance_qty_setting"
+                                 string="Complimentary Allowance"
+                                 help="Fallback complimentary quantity offered before charging excess.">
+                            <div class="content-group">
+                                <div class="o_row">
+                                    <field name="hotel_consumable_allowance_qty"/>
+                                    <label for="hotel_consumable_allowance_scope" string="Scope:"/>
+                                    <field name="hotel_consumable_allowance_scope"/>
+                                </div>
+                            </div>
+                        </setting>
+                        <setting id="hotel_consumable_allowance_price_setting"
+                                 string="Excess Unit Price"
+                                 help="Fallback price unit charged for excess consumption above the complimentary allowance. Empty uses product list price.">
+                            <field name="hotel_consumable_allowance_price"/>
+                        </setting>
+                        <setting id="hotel_consumable_replenishment_policy_setting"
+                                 string="Replenishment Policy"
+                                 help="Fallback replenishment policy when turnover takes place.">
+                            <field name="hotel_consumable_replenishment_policy"/>
+                        </setting>
+                    </block>
+
+                    <block title="Approvals" name="approvals_block">
+                        <setting id="hotel_require_rate_approval_setting"
+                                 string="Require Room Rate Approval"
+                                 help="Block direct changes of a room type rate: every change must be requested through a Room Rate Change document.">
+                            <field name="hotel_require_rate_approval"/>
+                        </setting>
+                        <setting id="hotel_require_discount_approval_setting"
+                                 string="Require Discount Approval"
+                                 help="Block discounts above the free threshold on a stay unless an approved discount request covers them.">
+                            <div class="content-group">
+                                <field name="hotel_require_discount_approval"/>
+                                <div class="mt16" invisible="not hotel_require_discount_approval">
+                                    <label for="hotel_discount_free_pct" string="Automatic up to"/>
+                                    <div class="o_row">
+                                        <field name="hotel_discount_free_pct"/>
+                                        <span>%</span>
+                                        <label for="hotel_discount_manager_pct" string=", manager up to"/>
+                                        <field name="hotel_discount_manager_pct"/>
+                                        <span>%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </setting>
+                    </block>
+
+                </app>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_hotel_configuration" model="ir.actions.act_window">
+        <field name="name">Hotel Settings</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="context">{'module': 'hotel', 'bin_size': False}</field>
+    </record>
+
+</odoo>

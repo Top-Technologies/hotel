@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="hotel.HotelRoomAvailabilityCard">
+        <div class="ra-card"
+             t-att-class="avClass(room.availability)"
+             t-on-click="() => this.openCard(room)">
+            <div class="ra-card-top d-flex align-items-center justify-content-between">
+                <span class="ra-number" t-esc="room.number"/>
+                <span class="ra-type" t-esc="room.room_type"/>
+            </div>
+            <div class="ra-card-mid">
+                <t t-if="room.guest_name">
+                    <t t-if="room.stays and room.stays.length > 1">
+                        <div class="ra-stays">
+                            <t t-foreach="room.stays" t-as="st" t-key="st.id">
+                                <div class="ra-stay-block mb-1">
+                                    <div class="ra-guest fw-semibold small">
+                                        <i class="fa fa-user me-1"/>
+                                        <span t-esc="st.guest_name"/>
+                                    </div>
+                                    <div class="ra-stay text-muted small">
+                                        <t t-esc="st.checkin"/> → <t t-esc="st.checkout"/>
+                                        <span class="ms-1" t-esc="st.name"/>
+                                    </div>
+                                </div>
+                            </t>
+                        </div>
+                    </t>
+                    <t t-else="">
+                        <div class="ra-guest fw-semibold">
+                            <i class="fa fa-user me-1"/>
+                            <span t-esc="room.guest_name"/>
+                        </div>
+                        <div class="ra-stay text-muted small">
+                            <t t-esc="room.checkin"/> → <t t-esc="room.checkout"/>
+                        </div>
+                        <div class="ra-badges d-flex flex-wrap gap-1 mt-1">
+                            <span t-if="room.arriving" class="ra-chip ra-chip-in">
+                                <i class="fa fa-sign-in me-1"/>Arriving
+                            </span>
+                            <span t-if="room.departing" class="ra-chip ra-chip-out">
+                                <i class="fa fa-sign-out me-1"/>Departing
+                            </span>
+                            <span t-if="room.reservation_id"
+                                  class="ra-chip ra-chip-rsv"
+                                  t-on-click.stop="() => this.openStay(room)">
+                                <i class="fa fa-bed me-1"/>
+                                <t t-esc="room.reservation_name"/>
+                            </span>
+                        </div>
+                    </t>
+                </t>
+                <t t-else="">
+                    <div class="ra-ready">
+                        <t t-if="room.availability === 'available'">
+                            <i class="fa fa-check-circle me-1"/>
+                            Ready for tonight
+                        </t>
+                        <t t-else="">
+                            <span class="text-capitalize" t-esc="room.status_label"/>
+                        </t>
+                    </div>
+                    <t t-if="room.next_stay">
+                        <div class="ra-next mt-1 small text-muted">
+                            <i class="fa fa-clock-o me-1"/>
+                            Next: <t t-esc="room.next_stay.guest_name"/> (<t t-esc="room.next_stay.checkin"/> → <t t-esc="room.next_stay.checkout"/>)
+                        </div>
+                    </t>
+                </t>
+            </div>
+            <div class="ra-card-bottom small text-muted d-flex justify-content-between">
+                <span title="Capacity">
+                    <i class="fa fa-users me-1"/>Cap <t t-esc="room.capacity"/>
+                </span>
+                <span class="ra-status" t-esc="room.status_label"/>
+            </div>
+        </div>
+    </t>
+
+    <t t-name="hotel.HotelRoomAvailabilityGrid">
+        <div class="ra-grid">
+            <t t-foreach="rooms" t-as="room" t-key="room.id">
+                <t t-call="hotel.HotelRoomAvailabilityCard">
+                    <t t-set="room" t-value="room"/>
+                </t>
+            </t>
+        </div>
+    </t>
+
+    <t t-name="hotel.HotelRoomAvailabilityTemplate" owl="1">
+        <div class="o_room_availability">
+            <div class="ra-header d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
+                <div class="d-flex align-items-center gap-2">
+                    <h4 class="mb-0">
+                        <i class="fa fa-building-o text-primary me-2"/>
+                        Room Availability
+                    </h4>
+                    <span class="text-muted" t-esc="formatDate(state.data.date)"/>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button class="btn"
+                                t-att-class="state.group_by === 'type' ? 'btn-primary' : 'btn-outline-secondary'"
+                                t-on-click="() => this.setGroupBy('type')">
+                            <i class="fa fa-tags me-1"/>By Type
+                        </button>
+                        <button class="btn"
+                                t-att-class="state.group_by === 'floor' ? 'btn-primary' : 'btn-outline-secondary'"
+                                t-on-click="() => this.setGroupBy('floor')">
+                            <i class="fa fa-map-o me-1"/>By Floor
+                        </button>
+                    </div>
+                    <button class="btn btn-outline-secondary btn-sm"
+                            t-on-click="() => this._shift(-1)">
+                        <i class="fa fa-chevron-left"/>
+                    </button>
+                    <input type="date" class="form-control form-control-sm"
+                           t-model="state.date" t-on-change="onDateChange"
+                           style="width: 150px;"/>
+                    <button class="btn btn-outline-primary btn-sm"
+                            t-on-click="goToday">Today</button>
+                    <button class="btn btn-outline-secondary btn-sm"
+                            t-on-click="() => this._shift(1)">
+                        <i class="fa fa-chevron-right"/>
+                    </button>
+                    <button class="btn btn-primary btn-sm" t-on-click="loadBoard">
+                        <i class="fa fa-refresh me-1"/>Refresh
+                    </button>
+                </div>
+            </div>
+
+            <div class="ra-summary d-flex flex-wrap align-items-center gap-3 mb-3">
+                <div class="d-flex flex-wrap gap-2">
+                    <span t-foreach="getLegend()" t-as="item" t-key="item.key"
+                          class="ra-legend badge">
+                        <span t-att-class="`ra-dot ${item.css}`"/>
+                        <span t-esc="item.label"/>
+                    </span>
+                </div>
+                <span class="text-muted ms-auto small" t-esc="countLabel()"/>
+            </div>
+
+            <div t-if="state.loading" class="d-flex justify-content-center p-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+
+            <div t-if="!state.loading and state.error"
+                 class="alert alert-danger text-center my-4">
+                <i class="fa fa-exclamation-triangle me-2"/>
+                <span t-esc="state.error"/>
+            </div>
+
+            <div t-if="!state.loading and !state.error">
+                <div t-if="!state.data.groups || state.data.groups.length === 0"
+                     class="alert alert-info text-center my-4">
+                    <i class="fa fa-info-circle me-2"/>No active rooms yet.
+                </div>
+                <div t-foreach="state.data.groups || []" t-as="group"
+                     t-key="group.key" class="ra-group mb-4">
+                    <h5 class="ra-group-title mb-2">
+                        <i class="fa fa-tags text-muted me-2"
+                           t-if="state.group_by === 'type'"/>
+                        <i class="fa fa-map-o text-muted me-2"
+                           t-if="state.group_by !== 'type'"/>
+                        <t t-esc="group.title"/>
+                    </h5>
+                    <t t-if="group.floors and group.floors.length">
+                        <div t-foreach="group.floors" t-as="floor"
+                             t-key="floor.floor" class="ra-floor-block mb-3">
+                            <h6 class="ra-floor text-muted mb-2" t-esc="floor.title"/>
+                            <t t-call="hotel.HotelRoomAvailabilityGrid">
+                                <t t-set="rooms" t-value="floor.rooms"/>
+                            </t>
+                        </div>
+                    </t>
+                    <t t-else="">
+                        <t t-call="hotel.HotelRoomAvailabilityGrid">
+                            <t t-set="rooms" t-value="group.rooms"/>
+                        </t>
+                    </t>
+                </div>
+            </div>
+        </div>
+    </t>
+
+</templates>

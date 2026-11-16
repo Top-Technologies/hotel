@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Safe deposits -->
+    <record id="hotel_safe_deposit_view_search" model="ir.ui.view">
+        <field name="name">hotel.safe.deposit.search</field>
+        <field name="model">hotel.safe.deposit</field>
+        <field name="arch" type="xml">
+            <search string="Safe Deposits">
+                <field name="name"/>
+                <field name="guest_id"/>
+                <field name="room_id"/>
+                <field name="location_id"/>
+                <filter name="open" string="Open" domain="[('state', 'in', ['received', 'stored'])]"/>
+                <filter name="received" string="Received" domain="[('state', '=', 'received')]"/>
+                <filter name="stored" string="Stored" domain="[('state', '=', 'stored')]"/>
+                <filter name="released" string="Released" domain="[('state', '=', 'released')]"/>
+                <separator/>
+                <filter name="closed" string="Closed"
+                        domain="[('state', 'in', ['released', 'cancelled'])]"/>
+                <group name="group_by">
+                    <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                    <filter name="group_location" string="Storage Location"
+                            context="{'group_by': 'location_id'}"/>
+                    <filter name="group_guest" string="Guest" context="{'group_by': 'guest_id'}"/>
+                    <filter name="group_month" string="Receipt Month"
+                            context="{'group_by': 'received_date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="hotel_safe_deposit_view_list" model="ir.ui.view">
+        <field name="name">hotel.safe.deposit.list</field>
+        <field name="model">hotel.safe.deposit</field>
+        <field name="arch" type="xml">
+            <list string="Safe Deposits" decoration-muted="state == 'cancelled'"
+                  decoration-success="state == 'released'">
+                <field name="name"/>
+                <field name="property_id"/>
+                <field name="guest_id"/>
+                <field name="room_id"/>
+                <field name="location_id"/>
+                <field name="received_date"/>
+                <field name="received_by_id"/>
+                <field name="released_date" optional="show"/>
+                <field name="released_by_id" optional="show"/>
+                <field name="state" widget="badge"
+                       decoration-primary="state == 'received'"
+                       decoration-success="state == 'stored'"
+                       decoration-info="state == 'released'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="hotel_safe_deposit_view_form" model="ir.ui.view">
+        <field name="name">hotel.safe.deposit.form</field>
+        <field name="model">hotel.safe.deposit</field>
+        <field name="arch" type="xml">
+            <form string="Safe Deposit">
+                <header>
+                    <button name="action_store" type="object" string="Mark Stored"
+                            class="btn-primary" invisible="state != 'received'"/>
+                    <button name="action_release" type="object" string="Release Deposit"
+                            class="btn-primary"
+                            groups="hotel.group_security_officer,hotel.group_receptionist"
+                            invisible="state not in ('received', 'stored')"/>
+                    <button name="action_cancel" type="object" string="Cancel"
+                            invisible="state == 'released'"/>
+                    <button name="action_print_deposit_receipt" type="object"
+                            string="Deposit Receipt"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="received,stored,released"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                        <h3><field name="property_id" placeholder="Guest asset"/></h3>
+                    </div>
+                    <group>
+                        <group string="Guest &amp; Stay">
+                            <field name="guest_id"/>
+                            <field name="reservation_id"/>
+                            <field name="room_id"/>
+                        </group>
+                        <group string="Custody">
+                            <field name="location_id"/>
+                            <field name="received_date"/>
+                            <field name="received_by_id"/>
+                            <field name="released_date" readonly="1"/>
+                            <field name="released_by_id" readonly="1"/>
+                        </group>
+                    </group>
+                    <field name="notes" placeholder="Deposit terms, agreed conditions"/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="hotel_safe_deposit_action" model="ir.actions.act_window">
+        <field name="name">Safe Deposits</field>
+        <field name="res_model">hotel.safe.deposit</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="hotel_safe_deposit_view_search"/>
+        <field name="context">{'search_default_open': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Open the safe deposit box holding a
+                guest item and release it once the item leaves the hotel.</p>
+        </field>
+    </record>
+
+    <!-- Custody records -->
+    <record id="hotel_property_custody_view_search" model="ir.ui.view">
+        <field name="name">hotel.property.custody.search</field>
+        <field name="model">hotel.property.custody</field>
+        <field name="arch" type="xml">
+            <search string="Custody Records">
+                <field name="name"/>
+                <field name="property_id"/>
+                <field name="user_id"/>
+                <filter name="pending" string="Pending" domain="[('state', '=', 'pending')]"/>
+                <filter name="completed" string="Completed"
+                        domain="[('state', '=', 'completed')]"/>
+                <separator/>
+                <filter name="transfer" string="Transfers" domain="[('action', '=', 'transfer')]"/>
+                <filter name="inspection" string="Inspections"
+                        domain="[('action', '=', 'inspection')]"/>
+                <group name="group_by">
+                    <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                    <filter name="group_action" string="Action" context="{'group_by': 'action'}"/>
+                    <filter name="group_user" string="Recorded By" context="{'group_by': 'user_id'}"/>
+                    <filter name="group_month" string="Month"
+                            context="{'group_by': 'custody_date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="hotel_property_custody_view_list" model="ir.ui.view">
+        <field name="name">hotel.property.custody.list</field>
+        <field name="model">hotel.property.custody</field>
+        <field name="arch" type="xml">
+            <list string="Custody Records" decoration-muted="state == 'cancelled'"
+                  decoration-warning="state == 'pending'">
+                <field name="name"/>
+                <field name="custody_date"/>
+                <field name="property_id"/>
+                <field name="action"/>
+                <field name="from_location_id"/>
+                <field name="to_location_id"/>
+                <field name="user_id"/>
+                <field name="condition"/>
+                <field name="state" widget="badge"
+                       decoration-warning="state == 'pending'"
+                       decoration-success="state == 'completed'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="hotel_property_custody_view_form" model="ir.ui.view">
+        <field name="name">hotel.property.custody.form</field>
+        <field name="model">hotel.property.custody</field>
+        <field name="arch" type="xml">
+            <form string="Custody Record">
+                <header>
+                    <button name="action_confirm" type="object" string="Confirm Handover"
+                            class="btn-primary" invisible="state != 'pending'"/>
+                    <button name="action_cancel" type="object" string="Cancel"
+                            invisible="state != 'pending'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="pending,completed"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                        <h3><field name="property_id"/></h3>
+                    </div>
+                    <group>
+                        <group string="Handover">
+                            <field name="action"/>
+                            <field name="custody_date"/>
+                            <field name="user_id"/>
+                        </group>
+                        <group string="Chain">
+                            <field name="from_location_id"/>
+                            <field name="to_location_id"/>
+                            <field name="from_user_id"/>
+                            <field name="to_user_id"/>
+                        </group>
+                        <group string="Condition">
+                            <field name="condition"/>
+                            <field name="condition_notes"/>
+                        </group>
+                    </group>
+                    <field name="notes" placeholder="What happened during this handover"/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="hotel_property_custody_action" model="ir.actions.act_window">
+        <field name="name">Custody Records</field>
+        <field name="res_model">hotel.property.custody</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="hotel_property_custody_view_search"/>
+        <field name="context">{'search_default_pending': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Every handover of a guest item is
+                logged here: reception, safe storage, transfers and returns.</p>
+        </field>
+    </record>
+
+</odoo>

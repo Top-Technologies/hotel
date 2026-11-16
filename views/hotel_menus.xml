@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Main Hotel Menu -->
+    <menuitem id="menu_hotel_root" name="Hotel" sequence="5" web_icon="hotel,static/description/icon.svg"/>
+
+    <!-- Dashboard - Top Priority -->
+    <menuitem id="menu_hotel_dashboard" name="Dashboard"
+              parent="menu_hotel_root" action="action_hotel_reservations_dashboard"
+              sequence="1" groups="hotel.group_hotel_user"/>
+
+    <!-- Front Desk (reception operations grouped together) -->
+    <menuitem id="menu_hotel_front_desk" name="Front Desk"
+              parent="menu_hotel_root" sequence="10"
+              groups="hotel.group_receptionist"/>
+
+    <!-- Reservations -->
+    <menuitem id="menu_hotel_reservations" name="Reservations"
+              parent="menu_hotel_front_desk" action="hotel_reservation_action"
+              sequence="10" groups="hotel.group_receptionist"/>
+
+    <menuitem id="menu_hotel_walkins" name="Book"
+              parent="menu_hotel_reservations"
+              action="hotel_reservation_book_action" sequence="5"
+              groups="hotel.group_receptionist"/>
+
+    <!-- Single room board: availability grouped by room type / floor. -->
+    <menuitem id="menu_hotel_availability" name="Room Board"
+              parent="menu_hotel_front_desk" action="action_hotel_room_availability"
+              sequence="20" groups="hotel.group_receptionist"/>
+
+    <menuitem id="menu_hotel_availability_calendar" name="Room Availability Calendar"
+              parent="menu_hotel_front_desk" action="action_hotel_room_availability_calendar"
+              sequence="21" groups="hotel.group_receptionist"/>
+
+    <!-- Front desk raises cleaning requests; housekeeping executes them. -->
+    <menuitem id="menu_hotel_cleaning_requests" name="Cleaning Task Requests"
+              parent="menu_hotel_front_desk" action="hotel_housekeeping_task_action"
+              sequence="30" groups="hotel.group_receptionist"/>
+
+    <menuitem id="menu_hotel_guests" name="Guests"
+              parent="menu_hotel_front_desk"
+              action="hotel_guest_action" sequence="40"
+              groups="hotel.group_receptionist"/>
+
+
+
+    <!-- Complaints -->
+    <menuitem id="menu_hotel_complaints" name="Complaints"
+              parent="menu_hotel_front_desk" action="hotel_complaint_action"
+              sequence="60" groups="hotel.group_receptionist"/>
+
+    <!-- Housekeeping -->
+    <menuitem id="menu_hotel_housekeeping" name="Housekeeping"
+              parent="menu_hotel_root" sequence="40"
+              groups="hotel.group_housekeeping"/>
+
+    <menuitem id="menu_hotel_my_tasks" name="My Cleaning Tasks"
+              parent="menu_hotel_housekeeping" action="hotel_housekeeping_my_task_action"
+              sequence="20"/>
+
+    <menuitem id="menu_hotel_room_inspection" name="Room Inspection"
+              parent="menu_hotel_housekeeping" action="hotel_housekeeping_inspection_action"
+              sequence="30" groups="hotel.group_housekeeping_supervisor"/>
+
+    <menuitem id="menu_hotel_room_consumption" name="Room Consumption"
+              parent="menu_hotel_housekeeping" action="hotel_room_consumption_action"
+              sequence="40"/>
+
+    <menuitem id="menu_hotel_cart_requisition" name="Cart Requisitions"
+              parent="menu_hotel_housekeeping" action="action_hotel_supply_requisition"
+              sequence="45"/>
+
+
+
+    <!-- Food Service: order food/beverage by room for an in-house guest -->
+    <menuitem id="menu_hotel_food_service" name="Food Service"
+              parent="menu_hotel_root" sequence="45"
+              groups="hotel.group_receptionist"/>
+
+    <menuitem id="menu_hotel_room_service_orders" name="Room Food Orders"
+              parent="menu_hotel_food_service"
+              action="hotel_room_service_action"
+              sequence="10"/>
+
+    <menuitem id="menu_hotel_room_service_history" name="Food Order History"
+              parent="menu_hotel_food_service"
+              action="hotel_room_service_history_action"
+              sequence="20"/>
+
+    <!-- Maintenance -->
+    <menuitem id="menu_hotel_maintenance" name="Maintenance"
+              parent="menu_hotel_root" sequence="50"
+              groups="hotel.group_room_maintenance"/>
+
+    <menuitem id="menu_hotel_maintenance_requests" name="Maintenance Requests"
+              parent="menu_hotel_maintenance"
+              action="hotel_room_maintenance_action" sequence="10"/>
+
+    <!-- Guest Property -->
+    <menuitem id="menu_hotel_guest_property" name="Guest Property"
+              parent="menu_hotel_root" sequence="70"/>
+
+    <menuitem id="menu_hotel_guest_assets" name="Guest Assets"
+              parent="menu_hotel_guest_property" action="hotel_guest_property_action"
+              sequence="10"/>
+
+    <menuitem id="menu_hotel_returns_due_today" name="Returns Due Today"
+              parent="menu_hotel_guest_property" action="hotel_guest_property_due_today_action"
+              sequence="15"/>
+
+    <menuitem id="menu_hotel_returns_overdue" name="Overdue Returns"
+              parent="menu_hotel_guest_property" action="hotel_guest_property_overdue_action"
+              sequence="16"/>
+
+    <menuitem id="menu_hotel_safe_deposits" name="Safe Deposits"
+              parent="menu_hotel_guest_property" action="hotel_safe_deposit_action"
+              sequence="20"/>
+
+    <menuitem id="menu_hotel_custody_records" name="Custody Records"
+              parent="menu_hotel_guest_property" action="hotel_property_custody_action"
+              sequence="30"/>
+
+    <!-- Lost & Found -->
+    <menuitem id="menu_hotel_lost_found_root" name="Lost &amp; Found"
+              parent="menu_hotel_root" sequence="80"/>
+
+    <menuitem id="menu_hotel_lost_found" name="All Items"
+              parent="menu_hotel_lost_found_root" action="hotel_lost_found_action"
+              sequence="10"/>
+
+    <menuitem id="menu_hotel_lost_found_claims" name="Claims to Verify"
+              parent="menu_hotel_lost_found_root" action="hotel_lost_found_claims_action"
+              sequence="20"/>
+
+
+
+    <!-- Approvals (rate, discount, credit) -->
+    <menuitem id="menu_hotel_approvals" name="Approvals"
+              parent="menu_hotel_root" sequence="65"
+              groups="hotel.group_hotel_user"/>
+
+    <menuitem id="menu_hotel_approvals_rate" name="Rate Changes"
+              parent="menu_hotel_approvals"
+              action="hotel_rate_change_action" sequence="10"/>
+
+    <menuitem id="menu_hotel_approvals_discount" name="Discount Requests"
+              parent="menu_hotel_approvals"
+              action="hotel_discount_approval_action" sequence="20"/>
+
+    <menuitem id="menu_hotel_approvals_credit" name="Credit Requests"
+              parent="menu_hotel_approvals"
+              action="hotel_credit_approval_action" sequence="30"/>
+
+    <!-- Guest Feedback (standard Odoo Survey) -->
+    <menuitem id="menu_hotel_guest_feedback" name="Guest Feedback"
+              parent="menu_hotel_root" sequence="82"
+              groups="hotel.group_hotel_user"/>
+
+    <menuitem id="menu_hotel_survey_responses" name="Survey Responses"
+              parent="menu_hotel_guest_feedback"
+              action="hotel_guest_survey_action" sequence="10"
+              groups="hotel.group_hotel_manager,hotel.group_finance_user,hotel.group_general_manager"/>
+
+    <!-- Reports -->
+    <menuitem id="menu_hotel_reports" name="Reports"
+              parent="menu_hotel_root" sequence="85"
+              groups="hotel.group_hotel_manager,hotel.group_finance_user,hotel.group_general_manager"/>
+
+    <menuitem id="menu_hotel_reservation_reports" name="Reservation Reports"
+              parent="menu_hotel_reports" sequence="10"/>
+
+    <menuitem id="menu_hotel_walkin_register_report" name="Book Register"
+              parent="menu_hotel_reservation_reports"
+              action="action_walkin_register" sequence="5"
+              groups="hotel.group_hotel_manager"/>
+
+    <menuitem id="menu_hotel_revenue_reports" name="Revenue Reports"
+              parent="menu_hotel_reports" sequence="20"/>
+
+    <menuitem id="menu_hotel_deposit_ledger" name="Deposit Ledger"
+              parent="menu_hotel_revenue_reports"
+              action="action_hotel_deposit_ledger" sequence="10"
+              groups="hotel.group_hotel_manager,hotel.group_finance_user,hotel.group_general_manager"/>
+
+    <menuitem id="menu_hotel_occupancy_reports" name="Occupancy Reports"
+              parent="menu_hotel_reports" sequence="30"/>
+
+
+
+    <menuitem id="menu_hotel_discount_reports" name="Discount Reports"
+              parent="menu_hotel_reports"
+              action="hotel_discount_approval_action" sequence="60"/>
+
+    <menuitem id="menu_hotel_credit_reports" name="Credit Sales"
+              parent="menu_hotel_reports"
+              action="hotel_credit_approval_action" sequence="70"/>
+
+    <menuitem id="menu_hotel_feedback_reports" name="Guest Feedback"
+              parent="menu_hotel_reports"
+              action="hotel_guest_survey_action" sequence="80"/>
+
+    <!-- Configuration -->
+    <menuitem id="menu_hotel_configuration_root" name="Configuration"
+              parent="menu_hotel_root" sequence="90"
+              groups="hotel.group_hotel_manager"/>
+
+    <menuitem id="menu_hotel_room_types" name="Room Types"
+              parent="menu_hotel_configuration_root"
+              action="hotel_room_type_action" sequence="5"/>
+
+    <menuitem id="menu_hotel_rooms" name="Rooms"
+              parent="menu_hotel_configuration_root"
+              action="hotel_room_action" sequence="6"/>
+
+    <menuitem id="menu_hotel_room_consumables" name="Room Consumables"
+              parent="menu_hotel_configuration_root"
+              action="hotel_room_consumable_action" sequence="8"/>
+
+    <menuitem id="menu_hotel_configuration_amenities" name="Room Amenities"
+              parent="menu_hotel_configuration_root" action="hotel_amenity_action"
+              sequence="10"/>
+
+    <menuitem id="menu_hotel_property_categories" name="Property Categories"
+              parent="menu_hotel_configuration_root"
+              action="hotel_property_category_action" sequence="20"/>
+
+    <menuitem id="menu_hotel_storage_locations" name="Storage Locations"
+              parent="menu_hotel_configuration_root"
+              action="hotel_storage_location_action" sequence="30"/>
+
+
+
+    <menuitem id="menu_hotel_discount_rules" name="Discount Programs"
+              parent="menu_hotel_configuration_root"
+              action="hotel_discount_rule_action" sequence="35"/>
+
+    <menuitem id="menu_hotel_settings" name="Settings"
+              parent="menu_hotel_configuration_root"
+              action="action_hotel_configuration"
+              sequence="90"/>
+
+</odoo>

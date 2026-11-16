@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="hotel_checkout_wizard_view_form" model="ir.ui.view">
+        <field name="name">hotel.checkout.wizard.form</field>
+        <field name="model">hotel.checkout.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Guest Check-out">
+                <div class="alert alert-warning" role="alert"
+                     invisible="not checkout_warning">
+                    <field name="checkout_warning" nolabel="1" readonly="1"/>
+                    <div class="mt-2" invisible="not inspection_blocking">
+                        <button name="action_open_checkout_inspection" type="object"
+                                string="Open Inspection" class="btn-secondary"/>
+                    </div>
+                </div>
+                <field name="inspection_blocking" invisible="1"/>
+                <field name="discount_blocking" invisible="1"/>
+                <group>
+                    <group string="Stay">
+                        <field name="reservation_id" invisible="1"/>
+                        <field name="guest_id"/>
+                        <field name="room_id"/>
+                        <field name="checkin_at"/>
+                        <field name="checkout_at"/>
+                    </group>
+                    <group string="Charges">
+                        <field name="rate"/>
+                        <field name="discount"
+                               decoration-danger="discount_blocking"/>
+                        <field name="currency_id" invisible="1"/>
+                    </group>
+                </group>
+                <group>
+                    <group string="Summary">
+                        <field name="nights"/>
+                        <field name="room_charge"/>
+                        <field name="discount_amount"/>
+                        <field name="service_total"/>
+                        <field name="charges_total"/>
+                    </group>
+                    <group string="Settlement">
+                        <field name="deposit"/>
+                        <field name="balance_due" class="fw-bold text-primary" invisible="balance_due == 0 and refund_due &gt; 0"/>
+                        <field name="refund_due" class="fw-bold text-success" invisible="refund_due == 0"/>
+                    </group>
+                </group>
+                <notebook>
+                    <page string="Room Consumption" name="room_consumption">
+                        <field name="consumption_line_ids" readonly="1">
+                            <list string="Room Consumption" create="0" delete="0" edit="0">
+                                <field name="stay_date" optional="show"/>
+                                <field name="product_id"/>
+                                <field name="policy" string="Policy" optional="show"/>
+                                <field name="standard_qty" string="Standard Amount"/>
+                                <field name="provided_qty" string="Transfer"/>
+                                <field name="consumed_qty" string="Used"/>
+                                <field name="unused_qty" string="Remaining" optional="show"/>
+                                <field name="chargeable_qty" string="Billable Qty" optional="show"/>
+                                <field name="price_unit" string="Unit Price"/>
+                                <field name="guest_charge" string="Total Price Used (Billable)" sum="Total Billable"/>
+                                <field name="is_billable" column_invisible="1"/>
+                                <field name="currency_id" column_invisible="1"/>
+                            </list>
+                        </field>
+                        <group class="oe_subtotal_footer oe_right">
+                            <field name="consumption_total" widget="monetary"/>
+                        </group>
+                    </page>
+                    <page string="Extra Services" name="services">
+                        <field name="line_ids">
+                            <list string="Extra Services" editable="bottom">
+                                <field name="sequence" widget="handle"/>
+                                <field name="service_type"/>
+                                <field name="name"/>
+                                <field name="product_id"/>
+                                <field name="qty"/>
+                                <field name="price_unit"/>
+                                <field name="discount"/>
+                                <field name="price_subtotal" sum="Services"/>
+                                <field name="billable"/>
+                                <field name="currency_id" column_invisible="1"/>
+                            </list>
+                        </field>
+                    </page>
+                    <page string="Billing" name="billing">
+                        <group>
+                            <field name="create_invoice"/>
+                            <field name="settle_balance"
+                                   invisible="not create_invoice"/>
+                            <field name="payment_journal_id"
+                                   invisible="not create_invoice or not settle_balance"/>
+                        </group>
+                        <p class="text-muted" invisible="not create_invoice">
+                            The guest invoice posts the room revenue to the income account and
+                            analytic account of the room type. Advances collected at
+                            booking/check-in are applied to the invoice, then the remaining
+                            balance is registered on the chosen journal.
+                        </p>
+                    </page>
+                    <page string="Notes" name="notes">
+                        <field name="notes" nolabel="1"/>
+                    </page>
+                </notebook>
+                <footer>
+                    <button name="action_confirm_checkout" type="object" string="Check Out"
+                            class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"
+                            data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>
