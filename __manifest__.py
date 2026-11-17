@@ -2,7 +2,7 @@
     "name": "Hotel & Restaurant",
     "version": "18.0.1.4.0",
     "category": "Hotel Management",
-    "summary": "Hotel & Restaurant Management: rooms, reservations, front desk, housekeeping and guest billing",
+    "summary": "dina Hotel & Restaurant Management: rooms, reservations, front desk, housekeeping and guest billing",
     "description": """
 Hotel & Restaurant Management System
 ======================================
@@ -26,7 +26,7 @@ Compatible with Odoo 18 Community (no Enterprise dependencies).
   the guest folio through a clearing account, paid at check-out.
     """,
     "author": "TOPTechnologies",
-    "website": "https://www.toptech.et/",
+    "website": "",
     "license": "OPL-1",
     "depends": [
         "base",

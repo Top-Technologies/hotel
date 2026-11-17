@@ -151,7 +151,7 @@ export class HotelReservationsDashboard extends Component {
         if (num === 0) return `${symbol}0`;
         if (num < 1000) return `${symbol}${num}`;
         if (num < 1000000) return `${symbol}${(num / 1000).toFixed(0)}K`;
-        return `${symbol}${(num / 1000).toFixed(0)}K`;
+        return `${symbol}${(num / 1000000).toFixed(1)}M`;
     }
 
     formatPercentage(value) {

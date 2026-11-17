@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta
 
 try:
@@ -13,18 +14,39 @@ except ImportError:
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError
 
+_logger = logging.getLogger(__name__)
+
 
 class HotelDashboard(models.AbstractModel):
     _name = "hotel.dashboard"
     _description = "Hotel Reservations Dashboard"
 
     @api.model
+    def _company_domain(self):
+        """Domain to match records for the current allowed companies or global records."""
+        return ['|', ('company_id', '=', False), ('company_id', 'in', self.env.companies.ids)]
+
+    @api.model
     def _safe_count(self, model_name, domain):
-        """Count records, or zero when the current role cannot read them."""
+        """Count records, or zero when the current role cannot read them or table is empty/uninitialized."""
         try:
             return self.env[model_name].search_count(domain)
-        except AccessError:
+        except Exception:
             return 0
+
+    @api.model
+    def _format_datetime_safe(self, dt_val, fmt="%b %d, %Y"):
+        """Safely format a date/datetime whether it comes as a datetime object or string."""
+        if not dt_val:
+            return ""
+        if isinstance(dt_val, str):
+            try:
+                dt_val = fields.Datetime.from_string(dt_val)
+            except Exception:
+                return str(dt_val)
+        if hasattr(dt_val, "strftime"):
+            return dt_val.strftime(fmt)
+        return str(dt_val)
 
     @api.model
     def _room_numbers(self, room_ids):
@@ -32,10 +54,13 @@ class HotelDashboard(models.AbstractModel):
         room_ids = [room_id for room_id in room_ids if room_id]
         if not room_ids:
             return {}
-        rows = self.env["hotel.room"].search_read(
-            [("id", "in", list(set(room_ids)))], fields=["number"],
-        )
-        return {row["id"]: row["number"] for row in rows}
+        try:
+            rows = self.env["hotel.room"].search_read(
+                [("id", "in", list(set(room_ids)))], fields=["number"],
+            )
+            return {row["id"]: row["number"] for row in rows}
+        except Exception:
+            return {}
 
     @api.model
     def get_dashboard_data(self, date_from=False, date_to=False, period_type='this_month'):
@@ -49,57 +74,64 @@ class HotelDashboard(models.AbstractModel):
         """
         today = fields.Date.context_today(self)
 
-        # Set default period based on period_type
-        if not date_from or not date_to:
-            date_from, date_to = self._get_period_dates(period_type, today)
-
-        # Convert string dates to date objects if needed
-        if isinstance(date_from, str):
-            date_from = fields.Date.from_string(date_from)
-        if isinstance(date_to, str):
-            date_to = fields.Date.from_string(date_to)
-
-        reservation_model = self.env["hotel.reservation"]
         try:
-            reservation_model.check_access("read")
-        except AccessError:
-            # Roles outside the hotel departments still get a usable screen
-            # instead of a traceback; no figures are exposed to them.
-            return self._get_restricted_data(date_from, date_to, period_type, today)
+            # Set default period based on period_type
+            if not date_from or not date_to:
+                date_from, date_to = self._get_period_dates(period_type, today)
 
-        # One aggregate query for the balances shown in the front desk tables.
-        company_domain = [('company_id', 'in', self.env.companies.ids)]
-        in_house = reservation_model.search(company_domain + [("state", "=", "checked_in")])
-        paid_invoices = self._get_paid_invoices(
-            in_house | reservation_model.search(
-                company_domain + [
+            # Convert string dates to date objects if needed
+            if isinstance(date_from, str):
+                date_from = fields.Date.from_string(date_from)
+            if isinstance(date_to, str):
+                date_to = fields.Date.from_string(date_to)
+
+            reservation_model = self.env["hotel.reservation"]
+            try:
+                reservation_model.check_access("read")
+            except AccessError:
+                # Roles outside the hotel departments still get a usable screen
+                # instead of a traceback; no figures are exposed to them.
+                return self._get_restricted_data(date_from, date_to, period_type, today)
+
+            # One aggregate query for the balances shown in the front desk tables.
+            company_domain = self._company_domain()
+            in_house = reservation_model.search(company_domain + [("state", "=", "checked_in")])
+            paid_invoices = self._get_paid_invoices(
+                in_house | reservation_model.search(
+                    company_domain + [
                         ("state", "in", ["confirmed", "checked_in", "checked_out"]),
-                        ("checkout", "=", datetime.combine(today, datetime.max.time())),
-                ],
-            ),
-        )
+                        ("checkout", ">=", datetime.combine(today, datetime.min.time())),
+                        ("checkout", "<=", datetime.combine(today, datetime.max.time())),
+                    ],
+                ),
+            )
 
-        return {
-            "period": {
-                "date_from": date_from,
-                "date_to": date_to,
-                "period_type": period_type,
-                "today": today,
-            },
-            "kpis": self._get_kpi_data(date_from, date_to, today),
-            "occupancy": self._get_occupancy_data(today),
-            "room_status": self._get_room_status_data(),
-            "front_desk": self._get_front_desk_data(today),
-            "arrivals": self._get_arrivals_list(today),
-            "departures": self._get_departures_list(today, paid_invoices),
-            "recent_reservations": self._get_recent_reservations(),
-            "revenue": self._get_revenue_data(date_from, date_to),
-            "operations": self._get_operations_kpis(date_from, date_to),
-            "trend_chart": self._get_reservation_trend_data(date_from, date_to),
-            "revenue_chart": self._get_revenue_trend_data(date_from, date_to),
-            "property": self._get_property_data(),
-            "alerts": self._get_operational_alerts(paid_invoices),
-        }
+            return {
+                "period": {
+                    "date_from": date_from,
+                    "date_to": date_to,
+                    "period_type": period_type,
+                    "today": today,
+                },
+                "kpis": self._get_kpi_data(date_from, date_to, today),
+                "occupancy": self._get_occupancy_data(today),
+                "room_status": self._get_room_status_data(),
+                "front_desk": self._get_front_desk_data(today),
+                "arrivals": self._get_arrivals_list(today),
+                "departures": self._get_departures_list(today, paid_invoices),
+                "recent_reservations": self._get_recent_reservations(),
+                "revenue": self._get_revenue_data(date_from, date_to),
+                "operations": self._get_operations_kpis(date_from, date_to),
+                "trend_chart": self._get_reservation_trend_data(date_from, date_to),
+                "revenue_chart": self._get_revenue_trend_data(date_from, date_to),
+                "property": self._get_property_data(),
+                "alerts": self._get_operational_alerts(paid_invoices),
+            }
+        except Exception as e:
+            _logger.exception("Error loading hotel dashboard data: %s", e)
+            fallback = self._get_restricted_data(date_from, date_to, period_type, today)
+            fallback["error"] = str(e)
+            return fallback
 
     @api.model
     def _get_restricted_data(self, date_from, date_to, period_type, today):
@@ -133,77 +165,87 @@ class HotelDashboard(models.AbstractModel):
     @api.model
     def _get_arrivals_list(self, today, limit=10):
         """Arrivals expected today, with the data reception needs."""
-        reservations = self.env["hotel.reservation"].search_read(
-            [
-                    ('company_id', 'in', self.env.companies.ids),
+        try:
+            reservations = self.env["hotel.reservation"].search_read(
+                self._company_domain() + [
                     ("checkin", ">=", datetime.combine(today, datetime.min.time())),
                     ("checkin", "<=", datetime.combine(today, datetime.max.time())),
                     ("state", "in", ["confirmed", "checked_in"]),
-            ],
-            fields=[
-                "name", "guest_id", "room_id", "adults", "children",
-                "checkin", "state", "actual_checkin",
-            ],
-            order="checkin asc, id asc",
-            limit=limit,
-        )
-        room_numbers = self._room_numbers(
-            [row["room_id"][0] if row["room_id"] else False for row in reservations],
-        )
-        return [
-            {
-                "id": row["id"],
-                "name": row["name"],
-                "guest_id": row["guest_id"][0] if row["guest_id"] else False,
-                "guest_name": row["guest_id"][1] if row["guest_id"] else "",
-                "room_id": row["room_id"][0] if row["room_id"] else False,
-                "room_number": room_numbers.get(row["room_id"][0], "") if row["room_id"] else "",
-                "guests": (row["adults"] or 0) + (row["children"] or 0),
-                "checkin": row["checkin"].strftime("%b %d, %Y") if row["checkin"] else "",
-                "state": row["state"],
-                "state_label": self._reservation_state_label(row["state"]),
-                "checked_in": bool(row["actual_checkin"]),
-            }
-            for row in reservations
-        ]
+                ],
+                fields=[
+                    "name", "guest_id", "room_id", "adults", "children",
+                    "checkin", "state", "actual_checkin",
+                ],
+                order="checkin asc, id asc",
+                limit=limit,
+            )
+            room_numbers = self._room_numbers(
+                [row["room_id"][0] if row["room_id"] else False for row in reservations],
+            )
+            return [
+                {
+                    "id": row["id"],
+                    "name": row["name"],
+                    "guest_id": row["guest_id"][0] if row["guest_id"] else False,
+                    "guest_name": row["guest_id"][1] if row["guest_id"] else "",
+                    "room_id": row["room_id"][0] if row["room_id"] else False,
+                    "room_number": room_numbers.get(row["room_id"][0], "") if row["room_id"] else "",
+                    "guests": (row.get("adults") or 0) + (row.get("children") or 0),
+                    "checkin": self._format_datetime_safe(row.get("checkin"), "%b %d, %Y"),
+                    "state": row["state"],
+                    "state_label": self._reservation_state_label(row["state"]),
+                    "checked_in": bool(row.get("actual_checkin")),
+                }
+                for row in reservations
+            ]
+        except Exception:
+            return []
 
     @api.model
     def _get_departures_list(self, today, paid_invoices, limit=10):
         """Departures due today, with the outstanding folio balance."""
-        reservations = self.env["hotel.reservation"].search(
-            [
-                ('company_id', 'in', self.env.companies.ids),
-                ("checkout", ">=", datetime.combine(today, datetime.min.time())),
-                ("checkout", "<=", datetime.combine(today, datetime.max.time())),
-                ("state", "in", ["confirmed", "checked_in", "checked_out"]),
-            ],
-            order="checkout asc, id asc",
-            limit=limit,
-        )
-        departures = []
-        for reservation in reservations:
-            outstanding = reservation.folio_outstanding
-            departures.append({
-                "id": reservation.id,
-                "name": reservation.name,
-                "guest_id": reservation.guest_id.id,
-                "guest_name": reservation.guest_id.display_name or "",
-                "room_id": reservation.room_id.id,
-                "room_number": reservation.room_id.number or "",
-                "checkout": reservation.checkout.strftime("%b %d, %Y")
-                if reservation.checkout else "",
-                "state": reservation.state,
-                "state_label": self._reservation_state_label(reservation.state),
-                "checked_out": bool(reservation.actual_checkout),
-                "total": reservation.total or 0.0,
-                "outstanding": round(outstanding, 2),
-            })
-        return departures
+        try:
+            reservations = self.env["hotel.reservation"].search(
+                self._company_domain() + [
+                    ("checkout", ">=", datetime.combine(today, datetime.min.time())),
+                    ("checkout", "<=", datetime.combine(today, datetime.max.time())),
+                    ("state", "in", ["confirmed", "checked_in", "checked_out"]),
+                ],
+                order="checkout asc, id asc",
+                limit=limit,
+            )
+            departures = []
+            for reservation in reservations:
+                outstanding = 0.0
+                try:
+                    outstanding = reservation.folio_outstanding
+                except Exception:
+                    pass
+                departures.append({
+                    "id": reservation.id,
+                    "name": reservation.name,
+                    "guest_id": reservation.guest_id.id,
+                    "guest_name": reservation.guest_id.display_name or "",
+                    "room_id": reservation.room_id.id,
+                    "room_number": reservation.room_id.number or "",
+                    "checkout": self._format_datetime_safe(reservation.checkout, "%b %d, %Y"),
+                    "state": reservation.state,
+                    "state_label": self._reservation_state_label(reservation.state),
+                    "checked_out": bool(reservation.actual_checkout),
+                    "total": reservation.total or 0.0,
+                    "outstanding": round(outstanding or 0.0, 2),
+                })
+            return departures
+        except Exception:
+            return []
 
     @api.model
     def _reservation_state_label(self, state):
-        selection = self.env["hotel.reservation"]._fields["state"].selection
-        return dict(selection).get(state, state or "")
+        try:
+            selection = self.env["hotel.reservation"]._fields["state"].selection
+            return dict(selection).get(state, state or "")
+        except Exception:
+            return state or ""
 
     @api.model
     def _get_paid_invoices(self, reservations):
@@ -216,17 +258,21 @@ class HotelDashboard(models.AbstractModel):
             return {}
         try:
             rows = self.env["account.move"]._read_group(
-            [
+                [
                     ("move_type", "=", "out_invoice"),
                     ("state", "=", "posted"),
                     ("hotel_reservation_id", "in", reservations.ids),
-            ],
+                ],
                 ["hotel_reservation_id"],
                 ["amount_total:sum"],
             )
-        except AccessError:
+            return {
+                (rid.id if hasattr(rid, 'id') else rid): (amount or 0.0)
+                for rid, amount in rows
+                if rid
+            }
+        except Exception:
             return {}
-        return {rid: amount or 0.0 for rid, amount in rows if rid}
 
     @api.model
     def _get_period_dates(self, period_type, today):
@@ -257,13 +303,13 @@ class HotelDashboard(models.AbstractModel):
 
         # Active reservation states
         active_states = ['draft', 'confirmed', 'checked_in', 'checked_out']
+        comp_dom = self._company_domain()
 
         # Total reservations in period (by checkin date)
-        period_domain = [
-                ('company_id', 'in', self.env.companies.ids),
-                ("checkin", ">=", datetime.combine(date_from, datetime.min.time())),
-                ("checkin", "<=", datetime.combine(date_to, datetime.max.time())),
-                ("state", "in", active_states),
+        period_domain = comp_dom + [
+            ("checkin", ">=", datetime.combine(date_from, datetime.min.time())),
+            ("checkin", "<=", datetime.combine(date_to, datetime.max.time())),
+            ("state", "in", active_states),
         ]
         total_reservations = reservation_model.search_count(period_domain)
 
@@ -272,57 +318,52 @@ class HotelDashboard(models.AbstractModel):
         prev_from = date_from - timedelta(days=period_days)
         prev_to = date_from - timedelta(days=1)
 
-        prev_period_domain = [
-                ('company_id', 'in', self.env.companies.ids),
-                ("checkin", ">=", datetime.combine(prev_from, datetime.min.time())),
-                ("checkin", "<=", datetime.combine(prev_to, datetime.max.time())),
-                ("state", "in", active_states),
+        prev_period_domain = comp_dom + [
+            ("checkin", ">=", datetime.combine(prev_from, datetime.min.time())),
+            ("checkin", "<=", datetime.combine(prev_to, datetime.max.time())),
+            ("state", "in", active_states),
         ]
         prev_total_reservations = reservation_model.search_count(prev_period_domain)
 
         total_change = self._calculate_percentage_change(total_reservations, prev_total_reservations)
 
         # Today's arrivals (checkin date = today)
-        arrivals_domain = [
-                ('company_id', 'in', self.env.companies.ids),
-                ("checkin", ">=", datetime.combine(today, datetime.min.time())),
-                ("checkin", "<=", datetime.combine(today, datetime.max.time())),
-                ("state", "in", ["confirmed", "checked_in"]),
+        arrivals_domain = comp_dom + [
+            ("checkin", ">=", datetime.combine(today, datetime.min.time())),
+            ("checkin", "<=", datetime.combine(today, datetime.max.time())),
+            ("state", "in", ["confirmed", "checked_in"]),
         ]
         arrivals_today = reservation_model.search_count(arrivals_domain)
 
         # Yesterday's arrivals for comparison
         yesterday = today - timedelta(days=1)
-        yesterday_arrivals_domain = [
-                ('company_id', 'in', self.env.companies.ids),
-                ("checkin", ">=", datetime.combine(yesterday, datetime.min.time())),
-                ("checkin", "<=", datetime.combine(yesterday, datetime.max.time())),
-                ("state", "in", ["confirmed", "checked_in"]),
+        yesterday_arrivals_domain = comp_dom + [
+            ("checkin", ">=", datetime.combine(yesterday, datetime.min.time())),
+            ("checkin", "<=", datetime.combine(yesterday, datetime.max.time())),
+            ("state", "in", ["confirmed", "checked_in"]),
         ]
         arrivals_yesterday = reservation_model.search_count(yesterday_arrivals_domain)
         arrivals_change = self._calculate_percentage_change(arrivals_today, arrivals_yesterday)
 
         # Today's departures (checkout date = today)
-        departures_domain = [
-                ('company_id', 'in', self.env.companies.ids),
-                ("checkout", ">=", datetime.combine(today, datetime.min.time())),
-                ("checkout", "<=", datetime.combine(today, datetime.max.time())),
-                ("state", "in", ["confirmed", "checked_in", "checked_out"]),
+        departures_domain = comp_dom + [
+            ("checkout", ">=", datetime.combine(today, datetime.min.time())),
+            ("checkout", "<=", datetime.combine(today, datetime.max.time())),
+            ("state", "in", ["confirmed", "checked_in", "checked_out"]),
         ]
         departures_today = reservation_model.search_count(departures_domain)
 
         # Yesterday's departures for comparison
-        yesterday_departures_domain = [
-                ('company_id', 'in', self.env.companies.ids),
-                ("checkout", ">=", datetime.combine(yesterday, datetime.min.time())),
-                ("checkout", "<=", datetime.combine(yesterday, datetime.max.time())),
-                ("state", "in", ["confirmed", "checked_in", "checked_out"]),
+        yesterday_departures_domain = comp_dom + [
+            ("checkout", ">=", datetime.combine(yesterday, datetime.min.time())),
+            ("checkout", "<=", datetime.combine(yesterday, datetime.max.time())),
+            ("state", "in", ["confirmed", "checked_in", "checked_out"]),
         ]
         departures_yesterday = reservation_model.search_count(yesterday_departures_domain)
         departures_change = self._calculate_percentage_change(departures_today, departures_yesterday)
 
         # Pending confirmations (draft state)
-        pending_confirmations = reservation_model.search_count([('company_id', 'in', self.env.companies.ids), ("state", "=", "draft")])
+        pending_confirmations = reservation_model.search_count(comp_dom + [("state", "=", "draft")])
 
         # Same length period right before the selected one, for comparison
         prev_pending = reservation_model.search_count(prev_period_domain + [("state", "=", "draft")])
@@ -361,10 +402,13 @@ class HotelDashboard(models.AbstractModel):
     @api.model
     def _room_status_counts(self):
         """Room counts per status in a single aggregation."""
-        rows = self.env["hotel.room"]._read_group(
-            [('company_id', 'in', self.env.companies.ids), ("active", "=", True)], ["status"], ["__count"],
-        )
-        return {status or "available": count for status, count in rows}
+        try:
+            rows = self.env["hotel.room"]._read_group(
+                self._company_domain() + [("active", "=", True)], ["status"], ["__count"],
+            )
+            return {status or "available": count for status, count in rows}
+        except Exception:
+            return {}
 
     @api.model
     def _get_occupancy_data(self, today=None):
@@ -433,59 +477,59 @@ class HotelDashboard(models.AbstractModel):
     def _get_front_desk_data(self, today):
         """Get front desk operations data for today."""
         reservation_model = self.env["hotel.reservation"]
+        comp_dom = self._company_domain()
 
         # Today's arrivals
-        arrivals = reservation_model.search_count([
-                ('company_id', 'in', self.env.companies.ids),
-                ("checkin", ">=", datetime.combine(today, datetime.min.time())),
-                ("checkin", "<=", datetime.combine(today, datetime.max.time())),
-                ("state", "in", ["confirmed", "checked_in"]),
+        arrivals = reservation_model.search_count(comp_dom + [
+            ("checkin", ">=", datetime.combine(today, datetime.min.time())),
+            ("checkin", "<=", datetime.combine(today, datetime.max.time())),
+            ("state", "in", ["confirmed", "checked_in"]),
         ])
 
         # Today's departures
-        departures = reservation_model.search_count([
-                ('company_id', 'in', self.env.companies.ids),
-                ("checkout", ">=", datetime.combine(today, datetime.min.time())),
-                ("checkout", "<=", datetime.combine(today, datetime.max.time())),
-                ("state", "in", ["confirmed", "checked_in", "checked_out"]),
+        departures = reservation_model.search_count(comp_dom + [
+            ("checkout", ">=", datetime.combine(today, datetime.min.time())),
+            ("checkout", "<=", datetime.combine(today, datetime.max.time())),
+            ("state", "in", ["confirmed", "checked_in", "checked_out"]),
         ])
 
         # Currently checked-in guests
-        checked_in = reservation_model.search_count([('company_id', 'in', self.env.companies.ids), ("state", "=", "checked_in")])
+        checked_in = reservation_model.search_count(comp_dom + [("state", "=", "checked_in")])
 
         # Guests checked out today (actual checkout today)
-        checked_out_today = reservation_model.search_count([
-                ('company_id', 'in', self.env.companies.ids),
-                ("actual_checkout", ">=", datetime.combine(today, datetime.min.time())),
-                ("actual_checkout", "<=", datetime.combine(today, datetime.max.time())),
-                ("state", "=", "checked_out"),
+        checked_out_today = reservation_model.search_count(comp_dom + [
+            ("actual_checkout", ">=", datetime.combine(today, datetime.min.time())),
+            ("actual_checkout", "<=", datetime.combine(today, datetime.max.time())),
+            ("state", "=", "checked_out"),
         ])
 
         # Pending confirmations
-        pending_confirmations = reservation_model.search_count([('company_id', 'in', self.env.companies.ids), ("state", "=", "draft")])
+        pending_confirmations = reservation_model.search_count(comp_dom + [("state", "=", "draft")])
 
         # Books Today = walk-in reservations registered at the desk today
         # (create date), regardless of planned stay dates.
         day_start = datetime.combine(today, datetime.min.time())
         day_end = datetime.combine(today, datetime.max.time())
-        books_today = reservation_model.search_count([
-            ('company_id', 'in', self.env.companies.ids),
+        books_today = reservation_model.search_count(comp_dom + [
             ("source", "=", "walkin"),
             ("create_date", ">=", day_start),
             ("create_date", "<=", day_end),
             ("state", "not in", ["cancelled"]),
         ])
         # Arrived Today = guests who completed check-in today (any source).
-        arrived_today = reservation_model.search_count([
-            ('company_id', 'in', self.env.companies.ids),
+        arrived_today = reservation_model.search_count(comp_dom + [
             ("actual_checkin", ">=", day_start),
             ("actual_checkin", "<=", day_end),
             ("state", "in", ["checked_in", "checked_out"]),
         ])
 
         # In-house folio balances — same formula as departures and billing alerts.
-        in_house = reservation_model.search([('company_id', 'in', self.env.companies.ids), ("state", "=", "checked_in")])
-        outstanding = round(sum(in_house.mapped("folio_outstanding")), 2)
+        in_house = reservation_model.search(comp_dom + [("state", "=", "checked_in")])
+        outstanding = 0.0
+        try:
+            outstanding = round(sum(in_house.mapped("folio_outstanding")), 2)
+        except Exception:
+            pass
 
         return {
             "arrivals": arrivals,
@@ -515,12 +559,12 @@ class HotelDashboard(models.AbstractModel):
         day_start = datetime.combine(date_obj, datetime.min.time())
         day_end = datetime.combine(date_obj, datetime.max.time())
 
+        comp_dom = self._company_domain()
         rooms = self.env["hotel.room"].search(
-            [('company_id', 'in', self.env.companies.ids), ("active", "=", True)], order="floor, sequence, number",
+            comp_dom + [("active", "=", True)], order="floor, sequence, number",
         )
         stays = self.env["hotel.reservation"].search(
-            [
-                ('company_id', 'in', self.env.companies.ids),
+            comp_dom + [
                 ("room_id", "!=", False),
                 ("state", "in", ["confirmed", "checked_in"]),
                 ("checkin", "<", day_end),
@@ -576,8 +620,7 @@ class HotelDashboard(models.AbstractModel):
                 next_stay = False
                 if availability == "available":
                     next_stay = self.env["hotel.reservation"].search(
-                        [
-                            ('company_id', 'in', self.env.companies.ids),
+                        comp_dom + [
                             ("room_id", "=", room.id),
                             ("state", "in", ["confirmed", "checked_in"]),
                             ("checkin", ">", day_start),
@@ -673,45 +716,48 @@ class HotelDashboard(models.AbstractModel):
     @api.model
     def _get_recent_reservations(self, limit=10):
         """Newest reservations with the fields reception needs."""
-        rows = self.env["hotel.reservation"].search_read(
-            [('company_id', 'in', self.env.companies.ids), ("state", "not in", ["cancelled", "no_show"])],
-            fields=[
-                "name", "guest_id", "room_id", "checkin", "checkout",
-                "state", "total",
-            ],
-            order="create_date desc, id desc",
-            limit=limit,
-        )
-        room_numbers = self._room_numbers(
-            [row["room_id"][0] if row["room_id"] else False for row in rows],
-        )
-        return [
-            {
-                "id": row["id"],
-                "name": row["name"],
-                "guest_id": row["guest_id"][0] if row["guest_id"] else False,
-                "guest_name": row["guest_id"][1] if row["guest_id"] else "",
-                "room_id": row["room_id"][0] if row["room_id"] else False,
-                "room_number": room_numbers.get(row["room_id"][0], "") if row["room_id"] else "",
-                "checkin": row["checkin"].strftime("%b %d") if row["checkin"] else "",
-                "checkout": row["checkout"].strftime("%b %d") if row["checkout"] else "",
-                "total": row["total"] or 0.0,
-                "state": row["state"],
-                "state_label": self._reservation_state_label(row["state"]),
-            }
-            for row in rows
-        ]
+        try:
+            rows = self.env["hotel.reservation"].search_read(
+                self._company_domain() + [("state", "not in", ["cancelled", "no_show"])],
+                fields=[
+                    "name", "guest_id", "room_id", "checkin", "checkout",
+                    "state", "total",
+                ],
+                order="create_date desc, id desc",
+                limit=limit,
+            )
+            room_numbers = self._room_numbers(
+                [row["room_id"][0] if row["room_id"] else False for row in rows],
+            )
+            return [
+                {
+                    "id": row["id"],
+                    "name": row["name"],
+                    "guest_id": row["guest_id"][0] if row["guest_id"] else False,
+                    "guest_name": row["guest_id"][1] if row["guest_id"] else "",
+                    "room_id": row["room_id"][0] if row["room_id"] else False,
+                    "room_number": room_numbers.get(row["room_id"][0], "") if row["room_id"] else "",
+                    "checkin": self._format_datetime_safe(row.get("checkin"), "%b %d"),
+                    "checkout": self._format_datetime_safe(row.get("checkout"), "%b %d"),
+                    "total": row["total"] or 0.0,
+                    "state": row["state"],
+                    "state_label": self._reservation_state_label(row["state"]),
+                }
+                for row in rows
+            ]
+        except Exception:
+            return []
 
     @api.model
     def _get_revenue_data(self, date_from, date_to):
         """Get revenue data with trend calculation."""
         invoice_model = self.env["account.move"]
         invoice_domain = [
-                ("move_type", "=", "out_invoice"),
-                ("hotel_reservation_id", "!=", False),
-                ("state", "=", "posted"),
-                ("invoice_date", ">=", date_from),
-                ("invoice_date", "<=", date_to),
+            ("move_type", "=", "out_invoice"),
+            ("hotel_reservation_id", "!=", False),
+            ("state", "=", "posted"),
+            ("invoice_date", ">=", date_from),
+            ("invoice_date", "<=", date_to),
         ]
 
         revenue_from_invoices, invoice_count = self._sum_aggregate(
@@ -724,18 +770,21 @@ class HotelDashboard(models.AbstractModel):
             accounting_readable = False
 
         # Reservations settled during the period, used when no invoice was posted.
-        reservation_rows = self.env["hotel.reservation"]._read_group(
-            [
-                    ('company_id', 'in', self.env.companies.ids),
+        revenue_from_reservations = 0.0
+        try:
+            reservation_rows = self.env["hotel.reservation"]._read_group(
+                self._company_domain() + [
                     ("actual_checkout", ">=", datetime.combine(date_from, datetime.min.time())),
                     ("actual_checkout", "<=", datetime.combine(date_to, datetime.max.time())),
                     ("state", "=", "checked_out"),
-            ],
-            [],
-            ["total:sum"],
-        )
+                ],
+                [],
+                ["total:sum"],
+            )
+            revenue_from_reservations = reservation_rows[0][0] or 0.0 if reservation_rows else 0.0
+        except Exception:
+            pass
 
-        revenue_from_reservations = reservation_rows[0][0] or 0.0 if reservation_rows else 0.0
         if invoice_count:
             total_revenue = revenue_from_invoices
             source = "invoices"
@@ -748,11 +797,17 @@ class HotelDashboard(models.AbstractModel):
         prev_revenue, _prev_count = self._sum_aggregate(
             invoice_model,
             invoice_domain[:-2] + [
-                    ("invoice_date", ">=", date_from - timedelta(days=period_days)),
-                    ("invoice_date", "<=", date_from - timedelta(days=1)),
+                ("invoice_date", ">=", date_from - timedelta(days=period_days)),
+                ("invoice_date", "<=", date_from - timedelta(days=1)),
             ],
             "amount_total",
         )
+
+        currency_symbol = "$"
+        try:
+            currency_symbol = self.env.company.currency_id.symbol or "$"
+        except Exception:
+            pass
 
         return {
             "revenue": total_revenue,
@@ -762,7 +817,7 @@ class HotelDashboard(models.AbstractModel):
             "invoice_count": invoice_count,
             "source": source,
             "available": accounting_readable,
-            "currency_symbol": self.env.company.currency_id.symbol,
+            "currency_symbol": currency_symbol,
             "change": self._calculate_percentage_change(total_revenue, prev_revenue),
             "label": _("vs. previous %s days") % period_days,
         }
@@ -777,40 +832,44 @@ class HotelDashboard(models.AbstractModel):
         """
         day_start = datetime.combine(date_from, datetime.min.time())
         day_end = datetime.combine(date_to, datetime.max.time())
+        comp_dom = self._company_domain()
 
         minibar_revenue, minibar_count = self._sum_aggregate(
             self.env["hotel.room.consumption"],
-            [
-                    ('company_id', 'in', self.env.companies.ids),
-                    ("state", "=", "posted"),
-                    ("stay_date", ">=", date_from),
-                    ("stay_date", "<=", date_to),
+            comp_dom + [
+                ("state", "=", "posted"),
+                ("stay_date", ">=", date_from),
+                ("stay_date", "<=", date_to),
             ],
             "total_charge",
         )
         discount_amount, discount_count = self._sum_aggregate(
             self.env["hotel.discount.approval"],
-            [
-                    ('company_id', 'in', self.env.companies.ids),
-                    ("state", "=", "approved"),
-                    ("action_date", ">=", day_start),
-                    ("action_date", "<=", day_end),
+            comp_dom + [
+                ("state", "=", "approved"),
+                ("action_date", ">=", day_start),
+                ("action_date", "<=", day_end),
             ],
             "discount_amount",
         )
         credit_sales, credit_count = self._sum_aggregate(
             self.env["hotel.credit.approval"],
-            [
-                    ('company_id', 'in', self.env.companies.ids),
-                    ("state", "=", "approved"),
-                    ("approval_date", ">=", day_start),
-                    ("approval_date", "<=", day_end),
+            comp_dom + [
+                ("state", "=", "approved"),
+                ("approval_date", ">=", day_start),
+                ("approval_date", "<=", day_end),
             ],
             "requested_amount",
         )
 
+        currency_symbol = "$"
+        try:
+            currency_symbol = self.env.company.currency_id.symbol or "$"
+        except Exception:
+            pass
+
         return {
-            "currency_symbol": self.env.company.currency_id.symbol,
+            "currency_symbol": currency_symbol,
             "minibar_revenue": {
                 "value": minibar_revenue,
                 "count": minibar_count,
@@ -836,8 +895,8 @@ class HotelDashboard(models.AbstractModel):
             d_from = fields.Date.to_date(date_from)
             d_to = fields.Date.to_date(date_to)
             domain += [
-                    ("stay_date", ">=", d_from),
-                    ("stay_date", "<=", d_to),
+                ("stay_date", ">=", d_from),
+                ("stay_date", "<=", d_to),
             ]
         return self._act_window(
             name=_("Minibar / Room Consumption"),
@@ -854,8 +913,8 @@ class HotelDashboard(models.AbstractModel):
             d_from = fields.Date.to_date(date_from)
             d_to = fields.Date.to_date(date_to)
             domain += [
-                    ("action_date", ">=", datetime.combine(d_from, datetime.min.time())),
-                    ("action_date", "<=", datetime.combine(d_to, datetime.max.time())),
+                ("action_date", ">=", datetime.combine(d_from, datetime.min.time())),
+                ("action_date", "<=", datetime.combine(d_to, datetime.max.time())),
             ]
         return self._act_window(
             name=_("Discounts"),
@@ -872,8 +931,8 @@ class HotelDashboard(models.AbstractModel):
             d_from = fields.Date.to_date(date_from)
             d_to = fields.Date.to_date(date_to)
             domain += [
-                    ("approval_date", ">=", datetime.combine(d_from, datetime.min.time())),
-                    ("approval_date", "<=", datetime.combine(d_to, datetime.max.time())),
+                ("approval_date", ">=", datetime.combine(d_from, datetime.min.time())),
+                ("approval_date", "<=", datetime.combine(d_to, datetime.max.time())),
             ]
         return self._act_window(
             name=_("Credit Sales"),
@@ -887,12 +946,12 @@ class HotelDashboard(models.AbstractModel):
         """Return (sum, record_count) for a numeric field over a domain."""
         try:
             rows = model._read_group(domain, [], [f"{field}:sum", "__count"])
-        except AccessError:
+            if not rows:
+                return 0.0, 0
+            total, count = rows[0]
+            return total or 0.0, count
+        except Exception:
             return 0.0, 0
-        if not rows:
-            return 0.0, 0
-        total, count = rows[0]
-        return total or 0.0, count
 
     @api.model
     def _trend_granularity(self, date_from, date_to):
@@ -938,19 +997,33 @@ class HotelDashboard(models.AbstractModel):
         """Trend series that yields no data instead of raising on access."""
         try:
             return self._trend_series(model, domain, field, granularity, aggregate)
-        except AccessError:
+        except Exception:
             return {}
 
     @api.model
     def _trend_series(self, model, domain, field, granularity, aggregate="__count"):
         """Aggregate a domain per time bucket, keyed by bucket start date."""
-        groupby = f"{field}:{granularity}"
-        rows = model._read_group(domain, [groupby], [aggregate])
-        # Datetime fields come back as datetimes, date fields as dates.
-        return {
-            bucket.date() if isinstance(bucket, datetime) else bucket: value or 0
-            for bucket, value in rows if bucket
-        }
+        try:
+            groupby = f"{field}:{granularity}"
+            rows = model._read_group(domain, [groupby], [aggregate])
+            # Datetime fields come back as datetimes, date fields as dates.
+            result = {}
+            for bucket, value in rows:
+                if not bucket:
+                    continue
+                if isinstance(bucket, datetime):
+                    key = bucket.date()
+                elif isinstance(bucket, str):
+                    try:
+                        key = fields.Date.from_string(bucket[:10])
+                    except Exception:
+                        key = bucket
+                else:
+                    key = bucket
+                result[key] = value or 0
+            return result
+        except Exception:
+            return {}
 
     @api.model
     def _get_reservation_trend_data(self, date_from, date_to):
@@ -960,23 +1033,30 @@ class HotelDashboard(models.AbstractModel):
         start = datetime.combine(date_from, datetime.min.time())
         end = datetime.combine(date_to, datetime.max.time())
         counted_states = ["draft", "confirmed", "checked_in", "checked_out"]
+        comp_dom = self._company_domain()
 
         reservations = self._trend_series(
             reservation_model,
-            [('company_id', 'in', self.env.companies.ids), ("checkin", ">=", start), ("checkin", "<=", end),
-                 ("state", "in", counted_states)],
+            comp_dom + [
+                ("checkin", ">=", start), ("checkin", "<=", end),
+                ("state", "in", counted_states),
+            ],
             "checkin", granularity,
         )
         arrivals = self._trend_series(
             reservation_model,
-            [('company_id', 'in', self.env.companies.ids), ("checkin", ">=", start), ("checkin", "<=", end),
-                 ("state", "in", ["confirmed", "checked_in"])],
+            comp_dom + [
+                ("checkin", ">=", start), ("checkin", "<=", end),
+                ("state", "in", ["confirmed", "checked_in"]),
+            ],
             "checkin", granularity,
         )
         departures = self._trend_series(
             reservation_model,
-            [('company_id', 'in', self.env.companies.ids), ("checkout", ">=", start), ("checkout", "<=", end),
-                 ("state", "in", ["confirmed", "checked_in", "checked_out"])],
+            comp_dom + [
+                ("checkout", ">=", start), ("checkout", "<=", end),
+                ("state", "in", ["confirmed", "checked_in", "checked_out"]),
+            ],
             "checkout", granularity,
         )
 
@@ -1001,10 +1081,10 @@ class HotelDashboard(models.AbstractModel):
         revenue = self._trend_series_safe(
             self.env["account.move"],
             [("move_type", "=", "out_invoice"),
-                 ("hotel_reservation_id", "!=", False),
-                 ("state", "=", "posted"),
-                 ("invoice_date", ">=", date_from),
-                 ("invoice_date", "<=", date_to)],
+             ("hotel_reservation_id", "!=", False),
+             ("state", "=", "posted"),
+             ("invoice_date", ">=", date_from),
+             ("invoice_date", "<=", date_to)],
             "invoice_date", granularity, aggregate="amount_total:sum",
         )
 
@@ -1024,170 +1104,178 @@ class HotelDashboard(models.AbstractModel):
         alerts = []
         today = fields.Date.context_today(self)
         reservation_model = self.env["hotel.reservation"]
+        comp_dom = self._company_domain()
 
-        # 1. Reservations due today that were never checked in
-        late_arrivals = self._safe_count("hotel.reservation", [
-                ('company_id', 'in', self.env.companies.ids),
+        try:
+            # 1. Reservations due today that were never checked in
+            late_arrivals = self._safe_count("hotel.reservation", comp_dom + [
                 ("checkin", "<", datetime.combine(today, datetime.min.time())),
                 ("state", "=", "confirmed"),
-        ])
-        if late_arrivals > 0:
-            alerts.append({
-                "type": "reservations",
-                "priority": "high",
-                "message": _("%d confirmed arrivals still not checked in") % late_arrivals,
-                "count": late_arrivals,
-                "action": "action_open_late_arrivals",
-                "icon": "fa-user-clock",
-            })
+            ])
+            if late_arrivals > 0:
+                alerts.append({
+                    "type": "reservations",
+                    "priority": "high",
+                    "message": _("%d confirmed arrivals still not checked in") % late_arrivals,
+                    "count": late_arrivals,
+                    "action": "action_open_late_arrivals",
+                    "icon": "fa-user-clock",
+                })
 
-        # 2. Guests still in house after their check-out date
-        pending_departures = self._safe_count("hotel.reservation", [
-                ('company_id', 'in', self.env.companies.ids),
+            # 2. Guests still in house after their check-out date
+            pending_departures = self._safe_count("hotel.reservation", comp_dom + [
                 ("checkout", "<", datetime.combine(today, datetime.min.time())),
                 ("state", "=", "checked_in"),
-        ])
-        if pending_departures > 0:
-            alerts.append({
-                "type": "reservations",
-                "priority": "high",
-                "message": _("%d check-outs not completed") % pending_departures,
-                "count": pending_departures,
-                "action": "action_open_pending_departures",
-                "icon": "fa-sign-out",
-            })
+            ])
+            if pending_departures > 0:
+                alerts.append({
+                    "type": "reservations",
+                    "priority": "high",
+                    "message": _("%d check-outs not completed") % pending_departures,
+                    "count": pending_departures,
+                    "action": "action_open_pending_departures",
+                    "icon": "fa-sign-out",
+                })
 
-        # 3. Guest folios still carrying a balance (same figure as Front Desk).
-        open_folios = reservation_model.search(
-            [('company_id', 'in', self.env.companies.ids), ("state", "in", ["checked_in", "checked_out"])],
-        )
-        outstanding_balance = round(
-            sum(open_folios.mapped("folio_outstanding")), 2,
-        )
-        if outstanding_balance > 0:
-            alerts.append({
-                "type": "billing",
-                "priority": "medium",
-                "message": _("%s outstanding on guest folios")
-                % f"{self.env.company.currency_id.symbol} {outstanding_balance:,.2f}",
-                "count": len(open_folios.filtered(lambda r: r.folio_outstanding > 0)),
-                "action": "action_open_outstanding_balances",
-                "icon": "fa-money",
-            })
+            # 3. Guest folios still carrying a balance (same figure as Front Desk).
+            open_folios = reservation_model.search(
+                comp_dom + [("state", "in", ["checked_in", "checked_out"])],
+            )
+            outstanding_balance = 0.0
+            try:
+                outstanding_balance = round(
+                    sum(open_folios.mapped("folio_outstanding")), 2,
+                )
+            except Exception:
+                pass
 
-        # 4. Rooms waiting for cleaning (dirty status)
-        dirty_rooms = self._safe_count(
-            "hotel.room",
-            [
-                ('company_id', 'in', self.env.companies.ids),
-                ("active", "=", True),
-                ("status", "=", "dirty"),
-            ],
-        )
-        if dirty_rooms > 0:
-            alerts.append({
-                "type": "housekeeping",
-                "priority": "medium",
-                "message": _("%d rooms waiting for cleaning") % dirty_rooms,
-                "count": dirty_rooms,
-                "action": "action_open_dirty_rooms",
-                "icon": "fa-broom",
-            })
+            if outstanding_balance > 0:
+                currency_sym = "$"
+                try:
+                    currency_sym = self.env.company.currency_id.symbol or "$"
+                except Exception:
+                    pass
+                alerts.append({
+                    "type": "billing",
+                    "priority": "medium",
+                    "message": _("%s outstanding on guest folios")
+                    % f"{currency_sym} {outstanding_balance:,.2f}",
+                    "count": len(open_folios.filtered(lambda r: (r.folio_outstanding or 0) > 0)),
+                    "action": "action_open_outstanding_balances",
+                    "icon": "fa-money",
+                })
 
-        # 5. Rooms taken out of service
-        maintenance_rooms = self._safe_count(
-            "hotel.room",
-            [
-                ('company_id', 'in', self.env.companies.ids),
-                ("active", "=", True),
-                ("status", "=", "out_of_service"),
-            ],
-        )
-        if maintenance_rooms > 0:
-            alerts.append({
-                "type": "maintenance",
-                "priority": "high",
-                "message": _("%d rooms under maintenance") % maintenance_rooms,
-                "count": maintenance_rooms,
-                "action": "action_open_maintenance_rooms",
-                "icon": "fa-wrench",
-            })
+            # 4. Rooms waiting for cleaning (dirty status)
+            dirty_rooms = self._safe_count(
+                "hotel.room",
+                comp_dom + [
+                    ("active", "=", True),
+                    ("status", "=", "dirty"),
+                ],
+            )
+            if dirty_rooms > 0:
+                alerts.append({
+                    "type": "housekeeping",
+                    "priority": "medium",
+                    "message": _("%d rooms waiting for cleaning") % dirty_rooms,
+                    "count": dirty_rooms,
+                    "action": "action_open_dirty_rooms",
+                    "icon": "fa-broom",
+                })
 
-        # 6. High priority complaints
-        high_priority_complaints = self._safe_count(
-            "hotel.complaint",
-            [
-                ('company_id', 'in', self.env.companies.ids),
-                ("state", "in", ["new", "in_progress"]),
-                ("priority", "in", ["high", "critical"]),
-            ],
-        )
-        if high_priority_complaints > 0:
-            alerts.append({
-                "type": "complaints",
-                "priority": "high",
-                "message": _("%d high-priority complaints") % high_priority_complaints,
-                "count": high_priority_complaints,
-                "action": "action_open_high_priority_complaints",
-                "icon": "fa-exclamation-triangle",
-            })
+            # 5. Rooms taken out of service
+            maintenance_rooms = self._safe_count(
+                "hotel.room",
+                comp_dom + [
+                    ("active", "=", True),
+                    ("status", "=", "out_of_service"),
+                ],
+            )
+            if maintenance_rooms > 0:
+                alerts.append({
+                    "type": "maintenance",
+                    "priority": "high",
+                    "message": _("%d rooms under maintenance") % maintenance_rooms,
+                    "count": maintenance_rooms,
+                    "action": "action_open_maintenance_rooms",
+                    "icon": "fa-wrench",
+                })
 
-        # 7. Reservations awaiting confirmation
-        pending_reservations = self._safe_count("hotel.reservation", [('company_id', 'in', self.env.companies.ids), ("state", "=", "draft")])
-        if pending_reservations > 0:
-            alerts.append({
-                "type": "reservations",
-                "priority": "medium",
-                "message": _("%d reservations awaiting confirmation") % pending_reservations,
-                "count": pending_reservations,
-                "action": "action_open_pending_reservations",
-                "icon": "fa-clock-o",
-            })
+            # 6. High priority complaints
+            high_priority_complaints = self._safe_count(
+                "hotel.complaint",
+                comp_dom + [
+                    ("state", "in", ["new", "in_progress"]),
+                    ("priority", "in", ["high", "critical"]),
+                ],
+            )
+            if high_priority_complaints > 0:
+                alerts.append({
+                    "type": "complaints",
+                    "priority": "high",
+                    "message": _("%d high-priority complaints") % high_priority_complaints,
+                    "count": high_priority_complaints,
+                    "action": "action_open_high_priority_complaints",
+                    "icon": "fa-exclamation-triangle",
+                })
 
-        # 8. Overdue housekeeping tasks
-        overdue_date = today - timedelta(days=1)
-        overdue_cleaning = self._safe_count(
-            "hotel.housekeeping.task",
-            [
-                ('company_id', 'in', self.env.companies.ids),
-                ("state", "in", ["pending", "in_progress"]),
-                ("date", "<=", overdue_date),
-            ],
-        )
-        if overdue_cleaning > 0:
-            alerts.append({
-                "type": "housekeeping",
-                "priority": "high",
-                "message": _("%d overdue cleaning tasks") % overdue_cleaning,
-                "count": overdue_cleaning,
-                "action": "action_open_overdue_cleaning",
-                "icon": "fa-calendar-times-o",
-            })
+            # 7. Reservations awaiting confirmation
+            pending_reservations = self._safe_count("hotel.reservation", comp_dom + [("state", "=", "draft")])
+            if pending_reservations > 0:
+                alerts.append({
+                    "type": "reservations",
+                    "priority": "medium",
+                    "message": _("%d reservations awaiting confirmation") % pending_reservations,
+                    "count": pending_reservations,
+                    "action": "action_open_pending_reservations",
+                    "icon": "fa-clock-o",
+                })
 
-        # 9. Open maintenance requests
-        open_maintenance = self._safe_count(
-            "maintenance.request",
-            [
-                ("room_id", "!=", False),
-                ("stage_id.done", "=", False),
-                ("archive", "=", False),
-            ],
-        )
-        if open_maintenance > 0:
-            alerts.append({
-                "type": "maintenance",
-                "priority": "medium",
-                "message": _("%d open maintenance requests") % open_maintenance,
-                "count": open_maintenance,
-                "action": "action_open_open_maintenance",
-                "icon": "fa-tools",
-            })
+            # 8. Overdue housekeeping tasks
+            overdue_date = today - timedelta(days=1)
+            overdue_cleaning = self._safe_count(
+                "hotel.housekeeping.task",
+                comp_dom + [
+                    ("state", "in", ["pending", "in_progress"]),
+                    ("date", "<=", overdue_date),
+                ],
+            )
+            if overdue_cleaning > 0:
+                alerts.append({
+                    "type": "housekeeping",
+                    "priority": "high",
+                    "message": _("%d overdue cleaning tasks") % overdue_cleaning,
+                    "count": overdue_cleaning,
+                    "action": "action_open_overdue_cleaning",
+                    "icon": "fa-calendar-times-o",
+                })
 
-        alerts.extend(self._get_property_alerts())
+            # 9. Open maintenance requests
+            open_maintenance = self._safe_count(
+                "maintenance.request",
+                [
+                    ("room_id", "!=", False),
+                    ("stage_id.done", "=", False),
+                    ("archive", "=", False),
+                ],
+            )
+            if open_maintenance > 0:
+                alerts.append({
+                    "type": "maintenance",
+                    "priority": "medium",
+                    "message": _("%d open maintenance requests") % open_maintenance,
+                    "count": open_maintenance,
+                    "action": "action_open_open_maintenance",
+                    "icon": "fa-tools",
+                })
 
-        # Sort by priority (high first) then by count (descending)
-        priority_order = {"high": 1, "medium": 2, "low": 3}
-        alerts.sort(key=lambda x: (priority_order.get(x["priority"], 3), -x["count"]))
+            alerts.extend(self._get_property_alerts())
+
+            # Sort by priority (high first) then by count (descending)
+            priority_order = {"high": 1, "medium": 2, "low": 3}
+            alerts.sort(key=lambda x: (priority_order.get(x["priority"], 3), -x["count"]))
+        except Exception:
+            pass
 
         return alerts
 
@@ -1199,104 +1287,116 @@ class HotelDashboard(models.AbstractModel):
         """Guest property, safe deposit and lost & found summary."""
         held_states = ("received", "stored", "ready_return")
         today = fields.Date.context_today(self)
+        comp_dom = self._company_domain()
 
-        return {
-            "total_properties": self._safe_count("hotel.guest.property", []),
-            "with_guest": self._safe_count("hotel.guest.property", [("state", "=", "guest_possession")]),
-            "awaiting_deposit": self._safe_count("hotel.guest.property", [("state", "=", "deposit_requested")]),
-            "in_safe": self._safe_count("hotel.guest.property", [("state", "in", held_states)]),
-            "ready_return": self._safe_count("hotel.guest.property", [("state", "=", "ready_return")]),
-            "open_deposits": self._safe_count("hotel.safe.deposit", [("state", "in", ["received", "stored"])]),
-            "returns_due_today": self._safe_count("hotel.guest.property", [
-                ("state", "in", held_states),
-                ("expected_return_date", "=", today),
-            ]),
-            "overdue_returns": self._safe_count("hotel.guest.property", [
-                ("state", "in", held_states),
-                ("expected_return_date", "<", today),
-            ]),
-            "open_lost_found": self._safe_count("hotel.lost.found", [
-                ("state", "in", ["found", "stored", "claim_requested", "verified", "unclaimed"]),
-            ]),
-            "pending_claims": self._safe_count(
-                "hotel.lost.found", [("state", "=", "claim_requested")],
-            ),
-            "pending_custody": self._safe_count(
-                "hotel.property.custody", [("state", "=", "pending")],
-            ),
-        }
+        try:
+            return {
+                "total_properties": self._safe_count("hotel.guest.property", comp_dom),
+                "with_guest": self._safe_count("hotel.guest.property", comp_dom + [("state", "=", "guest_possession")]),
+                "awaiting_deposit": self._safe_count("hotel.guest.property", comp_dom + [("state", "=", "deposit_requested")]),
+                "in_safe": self._safe_count("hotel.guest.property", comp_dom + [("state", "in", held_states)]),
+                "ready_return": self._safe_count("hotel.guest.property", comp_dom + [("state", "=", "ready_return")]),
+                "open_deposits": self._safe_count("hotel.safe.deposit", comp_dom + [("state", "in", ["received", "stored"])]),
+                "returns_due_today": self._safe_count("hotel.guest.property", comp_dom + [
+                    ("state", "in", held_states),
+                    ("expected_return_date", "=", today),
+                ]),
+                "overdue_returns": self._safe_count("hotel.guest.property", comp_dom + [
+                    ("state", "in", held_states),
+                    ("expected_return_date", "<", today),
+                ]),
+                "open_lost_found": self._safe_count("hotel.lost.found", comp_dom + [
+                    ("state", "in", ["found", "stored", "claim_requested", "verified", "unclaimed"]),
+                ]),
+                "pending_claims": self._safe_count(
+                    "hotel.lost.found", comp_dom + [("state", "=", "claim_requested")],
+                ),
+                "pending_custody": self._safe_count(
+                    "hotel.property.custody", comp_dom + [("state", "=", "pending")],
+                ),
+            }
+        except Exception:
+            return {
+                "total_properties": 0, "with_guest": 0, "awaiting_deposit": 0,
+                "in_safe": 0, "ready_return": 0, "open_deposits": 0,
+                "returns_due_today": 0, "overdue_returns": 0, "open_lost_found": 0,
+                "pending_claims": 0, "pending_custody": 0,
+            }
 
     @api.model
     def _get_property_alerts(self):
         """Security desk alerts, based on the same models as the KPI block."""
         alerts = []
-        property_data = self._get_property_data()
+        try:
+            property_data = self._get_property_data()
 
-        if property_data["returns_due_today"]:
-            alerts.append({
-                "type": "property",
-                "priority": "medium",
-                "message": _("%d guest items expected back today")
-                % property_data["returns_due_today"],
-                "count": property_data["returns_due_today"],
-                "action": "action_open_returns_due_today",
-                "icon": "fa-calendar-check-o",
-            })
-        if property_data["overdue_returns"]:
-            alerts.append({
-                "type": "property",
-                "priority": "high",
-                "message": _("%d guest items past their expected return date")
-                % property_data["overdue_returns"],
-                "count": property_data["overdue_returns"],
-                "action": "action_open_overdue_properties",
-                "icon": "fa-exclamation-triangle",
-            })
-        if property_data["awaiting_deposit"]:
-            alerts.append({
-                "type": "property",
-                "priority": "medium",
-                "message": _("%d items awaiting deposit at reception")
-                % property_data["awaiting_deposit"],
-                "count": property_data["awaiting_deposit"],
-                "action": "action_open_deposit_requested",
-                "icon": "fa-hand-holding-o",
-            })
-        if property_data["pending_custody"]:
-            alerts.append({
-                "type": "property",
-                "priority": "medium",
-                "message": _("%d custody handovers pending confirmation")
-                % property_data["pending_custody"],
-                "count": property_data["pending_custody"],
-                "action": "action_open_pending_custody",
-                "icon": "fa-exchange",
-            })
-        if property_data["pending_claims"]:
-            alerts.append({
-                "type": "lost_found",
-                "priority": "medium",
-                "message": _("%d lost & found claims to verify") % property_data["pending_claims"],
-                "count": property_data["pending_claims"],
-                "action": "action_open_pending_claims",
-                "icon": "fa-question-circle",
-            })
-        old_cutoff = datetime.combine(
-            fields.Date.context_today(self) - timedelta(days=30), datetime.min.time(),
-        )
-        old_items = self._safe_count("hotel.lost.found", [
+            if property_data.get("returns_due_today"):
+                alerts.append({
+                    "type": "property",
+                    "priority": "medium",
+                    "message": _("%d guest items expected back today")
+                    % property_data["returns_due_today"],
+                    "count": property_data["returns_due_today"],
+                    "action": "action_open_returns_due_today",
+                    "icon": "fa-calendar-check-o",
+                })
+            if property_data.get("overdue_returns"):
+                alerts.append({
+                    "type": "property",
+                    "priority": "high",
+                    "message": _("%d guest items past their expected return date")
+                    % property_data["overdue_returns"],
+                    "count": property_data["overdue_returns"],
+                    "action": "action_open_overdue_properties",
+                    "icon": "fa-exclamation-triangle",
+                })
+            if property_data.get("awaiting_deposit"):
+                alerts.append({
+                    "type": "property",
+                    "priority": "medium",
+                    "message": _("%d items awaiting deposit at reception")
+                    % property_data["awaiting_deposit"],
+                    "count": property_data["awaiting_deposit"],
+                    "action": "action_open_deposit_requested",
+                    "icon": "fa-hand-holding-o",
+                })
+            if property_data.get("pending_custody"):
+                alerts.append({
+                    "type": "property",
+                    "priority": "medium",
+                    "message": _("%d custody handovers pending confirmation")
+                    % property_data["pending_custody"],
+                    "count": property_data["pending_custody"],
+                    "action": "action_open_pending_custody",
+                    "icon": "fa-exchange",
+                })
+            if property_data.get("pending_claims"):
+                alerts.append({
+                    "type": "lost_found",
+                    "priority": "medium",
+                    "message": _("%d lost & found claims to verify") % property_data["pending_claims"],
+                    "count": property_data["pending_claims"],
+                    "action": "action_open_pending_claims",
+                    "icon": "fa-question-circle",
+                })
+            old_cutoff = datetime.combine(
+                fields.Date.context_today(self) - timedelta(days=30), datetime.min.time(),
+            )
+            old_items = self._safe_count("hotel.lost.found", self._company_domain() + [
                 ("state", "in", ["stored", "unclaimed"]),
                 ("found_date", "<", old_cutoff),
-        ])
-        if old_items:
-            alerts.append({
-                "type": "lost_found",
-                "priority": "low",
-                "message": _("%d lost & found items kept over 30 days") % old_items,
-                "count": old_items,
-                "action": "action_open_old_lost_found",
-                "icon": "fa-clock-o",
-            })
+            ])
+            if old_items:
+                alerts.append({
+                    "type": "lost_found",
+                    "priority": "medium",
+                    "message": _("%d items held longer than 30 days") % old_items,
+                    "count": old_items,
+                    "action": "action_open_old_lost_found",
+                    "icon": "fa-archive",
+                })
+        except Exception:
+            pass
         return alerts
 
     # Helper for building complete act_window dictionaries

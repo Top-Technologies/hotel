@@ -428,9 +428,12 @@ class ResConfigSettings(models.TransientModel):
             if not company[field_name]:
                 val = ICP.get_param(param_key)
                 if val:
-                    rec = self.env[model_name].browse(int(val)).exists()
-                    if rec:
-                        res[field_name] = rec.id
+                    try:
+                        rec = self.env[model_name].browse(int(val)).exists()
+                        if rec:
+                            res[field_name] = rec.id
+                    except (ValueError, TypeError):
+                        pass
 
         if not company.hotel_default_tax_ids:
             tax_ids_str = ICP.get_param("hotel.default_tax_ids", default="")

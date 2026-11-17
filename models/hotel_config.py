@@ -391,25 +391,15 @@ class HotelConfig(models.AbstractModel):
 
         main_company = self.env.ref("base.main_company", raise_if_not_found=False)
         if not main_company or company == main_company:
-            data = self.env["ir.model.data"].sudo().search(
+            self.env["ir.model.data"].sudo()._update_xmlids(
                 [
-                    ("module", "=", "hotel"),
-                    ("name", "=", "room_charge_clearing_account"),
-                ],
-                limit=1,
-            )
-            if data:
-                data.write({"res_id": account.id})
-            else:
-                self.env["ir.model.data"].sudo().create(
                     {
-                        "module": "hotel",
-                        "name": "room_charge_clearing_account",
-                        "model": "account.account",
-                        "res_id": account.id,
+                        "xml_id": "hotel.room_charge_clearing_account",
+                        "record": account,
                         "noupdate": True,
-                    },
-                )
+                    }
+                ]
+            )
         return account
 
     @api.model
@@ -445,14 +435,14 @@ class HotelConfig(models.AbstractModel):
         account = Account.with_company(company).create(vals)
         main_company = self.env.ref("base.main_company", raise_if_not_found=False)
         if not main_company or company == main_company:
-            self.env["ir.model.data"].sudo().create(
-                {
-                    "module": "hotel",
-                    "name": "hotel_receivable_account",
-                    "model": "account.account",
-                    "res_id": account.id,
-                    "noupdate": True,
-                },
+            self.env["ir.model.data"].sudo()._update_xmlids(
+                [
+                    {
+                        "xml_id": "hotel.hotel_receivable_account",
+                        "record": account,
+                        "noupdate": True,
+                    }
+                ]
             )
         partner = company.partner_id.with_company(company)
         if not partner.property_account_receivable_id:
@@ -491,14 +481,14 @@ class HotelConfig(models.AbstractModel):
         account = Account.with_company(company).create(vals)
         main_company = self.env.ref("base.main_company", raise_if_not_found=False)
         if not main_company or company == main_company:
-            self.env["ir.model.data"].sudo().create(
-                {
-                    "module": "hotel",
-                    "name": "hotel_income_account",
-                    "model": "account.account",
-                    "res_id": account.id,
-                    "noupdate": True,
-                },
+            self.env["ir.model.data"].sudo()._update_xmlids(
+                [
+                    {
+                        "xml_id": "hotel.hotel_income_account",
+                        "record": account,
+                        "noupdate": True,
+                    }
+                ]
             )
         return account
 
@@ -546,26 +536,30 @@ class HotelConfig(models.AbstractModel):
                 limit=1,
             )
         if not config:
-            self.env.cr.execute(
-                """
-                SELECT column_name FROM information_schema.columns
-                 WHERE table_name = 'pos_config'
-                   AND column_name LIKE 'self_ordering%%'
-                   AND is_nullable = 'NO'
-                   AND column_default IS NULL
-                """
-            )
-            defaults = {
-                "self_ordering_mode": "'nothing'",
-                "self_ordering_service_mode": "'counter'",
-                "self_ordering_pay_after": "'meal'",
-            }
-            for (column,) in self.env.cr.fetchall():
-                default_sql = defaults.get(column)
-                if default_sql:
+            try:
+                with self.env.cr.savepoint():
                     self.env.cr.execute(
-                        f"ALTER TABLE pos_config ALTER COLUMN {column} SET DEFAULT {default_sql}"
+                        """
+                        SELECT column_name FROM information_schema.columns
+                         WHERE table_name = 'pos_config'
+                           AND column_name LIKE 'self_ordering%%'
+                           AND is_nullable = 'NO'
+                           AND column_default IS NULL
+                        """
                     )
+                    defaults = {
+                        "self_ordering_mode": "'nothing'",
+                        "self_ordering_service_mode": "'counter'",
+                        "self_ordering_pay_after": "'meal'",
+                    }
+                    for (column,) in self.env.cr.fetchall():
+                        default_sql = defaults.get(column)
+                        if default_sql:
+                            self.env.cr.execute(
+                                f"ALTER TABLE pos_config ALTER COLUMN {column} SET DEFAULT {default_sql}"
+                            )
+            except Exception:
+                pass
             vals = {"name": "Hotel Room Service", "company_id": company.id}
             if "module_pos_restaurant" in PosConfig._fields:
                 vals["module_pos_restaurant"] = False
