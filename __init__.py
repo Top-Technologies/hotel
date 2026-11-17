@@ -13,3 +13,4 @@ def post_init_hook(env):
     env["hotel.config"]._ensure_room_charge_payment_method()
     env["hotel.config"]._ensure_room_service_product()
     env["hotel.config"]._ensure_hotel_room_service_pos()
+    env["hotel.config"]._ensure_hotel_sequences()

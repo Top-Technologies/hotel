@@ -212,4 +212,10 @@ def migrate(cr, version):
         except Exception as e:
             _logger.warning("_ensure_hotel_room_service_pos failed for %s: %s", comp.name, e)
 
+    try:
+        with cr.savepoint():
+            env["hotel.config"]._ensure_hotel_sequences()
+    except Exception as e:
+        _logger.warning("_ensure_hotel_sequences failed: %s", e)
+
     _logger.info("hotel migration to 18.0.1.4.0 completed successfully.")

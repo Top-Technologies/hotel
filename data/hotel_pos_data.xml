@@ -21,4 +21,7 @@
          so optional POS addons (restaurant / self-order) do not break XML load. -->
     <function model="hotel.config" name="_ensure_hotel_room_service_pos"/>
 
+    <!-- Ensure all hotel model ir.sequences exist in the database -->
+    <function model="hotel.config" name="_ensure_hotel_sequences"/>
+
 </odoo>

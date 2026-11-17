@@ -114,9 +114,10 @@ class HotelComplaint(models.Model):
     def create(self, vals_list):
         for vals in vals_list:
             if vals.get("name") in (False, None, "New"):
-                vals["name"] = self.env["ir.sequence"].next_by_code(
+                company_id = vals.get("company_id") or self.env.company.id
+                vals["name"] = self.env["ir.sequence"].with_company(company_id).sudo().next_by_code(
                     "hotel.complaint"
-                )
+                ) or _("New")
         return super().create(vals_list)
 
     @api.depends("reported_date")

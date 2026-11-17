@@ -19,8 +19,8 @@ class HotelReservation(models.Model):
 
     name = fields.Char(
         string="Reference",
-        required=True,
-        default="New",
+        required=False,
+        default=lambda self: _("New"),
         readonly=True,
         copy=False,
         index=True,
@@ -386,15 +386,34 @@ class HotelReservation(models.Model):
             if default_state in ("draft", "confirmed"):
                 res["state"] = default_state
 
+        if "name" in fields_list and not res.get("name"):
+            res["name"] = _("New")
+
         return res
 
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
-            if vals.get("name") in (False, None, "New"):
-                vals["name"] = self.env["ir.sequence"].next_by_code(
-                    "hotel.reservation",
-                )
+            if not vals.get("name") or vals.get("name") in ("New", _("New"), "/"):
+                company_id = vals.get("company_id") or self.env.company.id
+                seq_obj = self.env["ir.sequence"].with_company(company_id).sudo()
+                name = seq_obj.next_by_code("hotel.reservation")
+                if not name:
+                    seq = self.env["ir.sequence"].sudo().search(
+                        [("code", "=", "hotel.reservation")], limit=1
+                    )
+                    if not seq:
+                        seq = self.env["ir.sequence"].sudo().create(
+                            {
+                                "name": "Hotel Reservation",
+                                "code": "hotel.reservation",
+                                "prefix": "RES/",
+                                "padding": 5,
+                                "company_id": False,
+                            }
+                        )
+                    name = seq.with_company(company_id).next_by_id() or _("New")
+                vals["name"] = name
             if not vals.get("room_type_id") and vals.get("room_id"):
                 room = self.env["hotel.room"].browse(vals["room_id"])
                 vals["room_type_id"] = room.room_type_id.id

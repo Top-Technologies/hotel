@@ -1051,3 +1051,37 @@ class HotelConfig(models.AbstractModel):
             "location_id": location.id,
             "location_dest_id": location_dest.id,
         }
+
+    @api.model
+    def _ensure_hotel_sequences(self):
+        """Ensure all required hotel sequences exist in the database."""
+        Sequence = self.env["ir.sequence"].sudo()
+        sequences = [
+            ("hotel.room.type", "Hotel Room Type", "RT/", 3),
+            ("hotel.reservation", "Hotel Reservation", "RES/", 5),
+            ("hotel.room.service.order", "Hotel Room Service Order", "FS/", 5),
+            ("hotel.housekeeping.task", "Hotel Housekeeping Task", "HK/", 5),
+            ("hotel.complaint", "Hotel Guest Complaint", "CMP/", 5),
+            ("hotel.property.category", "Hotel Property Category", "PC/", 3),
+            ("hotel.storage.location", "Hotel Storage Location", "LOC/", 3),
+            ("hotel.guest.property", "Hotel Guest Property", "GP/%(year)s/", 4),
+            ("hotel.safe.deposit", "Hotel Safe Deposit", "SD/%(year)s/", 4),
+            ("hotel.property.custody", "Hotel Property Custody", "CUS/%(year)s/", 4),
+            ("hotel.lost.found", "Hotel Lost & Found Item", "LF/%(year)s/", 4),
+            ("hotel.room.consumption", "Hotel Room Consumption", "RC/%(year)s/", 4),
+            ("hotel.room.inspection", "Hotel Room Inspection", "RI/%(year)s/", 4),
+            ("hotel.rate.change", "Hotel Room Rate Change", "RCG/%(year)s/", 4),
+            ("hotel.discount.approval", "Hotel Discount Approval", "DA/%(year)s/", 4),
+            ("hotel.credit.approval", "Hotel Credit Approval", "CA/%(year)s/", 4),
+            ("hotel.supply.requisition", "Hotel Supply Requisition", "REQ/%(year)s/", 4),
+        ]
+        for code, name, prefix, padding in sequences:
+            if not Sequence.search([("code", "=", code)], limit=1):
+                Sequence.create({
+                    "name": name,
+                    "code": code,
+                    "prefix": prefix,
+                    "padding": padding,
+                    "company_id": False,
+                })
+        return True
