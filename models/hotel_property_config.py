@@ -10,7 +10,7 @@ class HotelPropertyCategory(models.Model):
     _inherit = ["mail.thread"]
 
     name = fields.Char(required=True, translate=True)
-    code = fields.Char(required=True, copy=False, readonly=True, index=True)
+    code = fields.Char(string="Code", copy=False, index=True)
     sequence = fields.Integer(default=10)
     description = fields.Text()
     active = fields.Boolean(default=True)
@@ -37,8 +37,9 @@ class HotelPropertyCategory(models.Model):
     def create(self, vals_list):
         for vals in vals_list:
             if not vals.get("code"):
-                vals["code"] = self.env["ir.sequence"].next_by_code(
-                    "hotel.property.category"
+                vals["code"] = (
+                    self.env["ir.sequence"].next_by_code("hotel.property.category")
+                    or _("New")
                 )
         return super().create(vals_list)
 
@@ -96,7 +97,7 @@ class HotelStorageLocation(models.Model):
     _inherit = ["mail.thread"]
 
     name = fields.Char(required=True, translate=True)
-    code = fields.Char(required=True, copy=False, readonly=True, index=True)
+    code = fields.Char(string="Code", copy=False, index=True)
     location_type = fields.Selection(
         selection=[
             ("safe", "Hotel Safe"),
@@ -136,8 +137,9 @@ class HotelStorageLocation(models.Model):
     def create(self, vals_list):
         for vals in vals_list:
             if not vals.get("code"):
-                vals["code"] = self.env["ir.sequence"].next_by_code(
-                    "hotel.storage.location"
+                vals["code"] = (
+                    self.env["ir.sequence"].next_by_code("hotel.storage.location")
+                    or _("New")
                 )
         return super().create(vals_list)
 
