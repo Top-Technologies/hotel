@@ -1043,14 +1043,18 @@ class HotelConfig(models.AbstractModel):
     ):
         """Odoo stock.move values for hotel internal transfers."""
         product.ensure_one()
-        return {
-            "description_picking_manual": description or product.display_name,
+        desc = description or product.display_name or _("Hotel Stock Move")
+        vals = {
+            "name": desc,
             "product_id": product.id,
             "product_uom_qty": qty,
             "product_uom": product.uom_id.id,
             "location_id": location.id,
             "location_dest_id": location_dest.id,
         }
+        if "description_picking" in self.env["stock.move"]._fields:
+            vals["description_picking"] = desc
+        return vals
 
     @api.model
     def _ensure_hotel_sequences(self):
