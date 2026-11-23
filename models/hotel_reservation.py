@@ -246,6 +246,10 @@ class HotelReservation(models.Model):
     )
     actual_checkin = fields.Datetime(string="Actual Check-in", readonly=True, copy=False)
     actual_checkout = fields.Datetime(string="Actual Check-out", readonly=True, copy=False)
+    late_checkout_minutes = fields.Integer(string="Late Check-out Minutes", readonly=True, copy=False)
+    late_checkout_penalty = fields.Monetary(
+        string="Late Check-out Surcharge", currency_field="currency_id", readonly=True, copy=False
+    )
     # Compatibility aliases. When an extra service line is edited from the
     # check-out wizard, the web client sends the wizard's modified fields back
     # as the value of the line's ``reservation_id`` (see ``record.js``
@@ -1363,6 +1367,28 @@ class HotelReservation(models.Model):
             if account:
                 vals["account_id"] = account.id
             lines.append(Command.create(vals))
+
+        if self.late_checkout_penalty and self.late_checkout_penalty > 0:
+            room_type = self.room_type_id or self.room_id.room_type_id
+            product = (
+                (room_type and room_type.late_checkout_product_id)
+                or self.env["hotel.config"]._hotel_m2o_param("late_checkout_product_id", "product.product", company=self.company_id)
+            )
+            account = (room_type and room_type.income_account_id) or (product and self._get_income_account_for_product(product))
+            late_vals = {
+                "name": _(
+                    "Late Check-out Surcharge (Room %(room)s - %(mins)s mins late)",
+                    room=self.room_id.number or self.room_id.name or "",
+                    mins=self.late_checkout_minutes or 0,
+                ),
+                "quantity": 1.0,
+                "price_unit": self.late_checkout_penalty,
+            }
+            if product:
+                late_vals["product_id"] = product.id
+            if account:
+                late_vals["account_id"] = account.id
+            lines.append(Command.create(late_vals))
         return lines
 
     def _room_invoice_line_vals(self):
@@ -1781,7 +1807,9 @@ class HotelReservation(models.Model):
                     ADD COLUMN IF NOT EXISTS base_rate numeric DEFAULT 0.0,
                     ADD COLUMN IF NOT EXISTS breakfast_price numeric DEFAULT 0.0,
                     ADD COLUMN IF NOT EXISTS breakfast_amount_per_night numeric DEFAULT 0.0,
-                    ADD COLUMN IF NOT EXISTS breakfast_total numeric DEFAULT 0.0;
+                    ADD COLUMN IF NOT EXISTS breakfast_total numeric DEFAULT 0.0,
+                    ADD COLUMN IF NOT EXISTS late_checkout_minutes integer DEFAULT 0,
+                    ADD COLUMN IF NOT EXISTS late_checkout_penalty numeric DEFAULT 0.0;
                     """
                 )
         except Exception:

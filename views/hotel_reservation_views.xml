@@ -111,6 +111,13 @@
                             <field name="feedback_count"
                                    widget="statinfo" string="Feedback"/>
                         </button>
+                        <button name="action_open_properties"
+                                type="object" class="oe_stat_button"
+                                icon="fa-briefcase"
+                                invisible="property_count == 0">
+                            <field name="property_count"
+                                   widget="statinfo" string="Guest Assets"/>
+                        </button>
                     </div>
                     <div class="oe_title">
                         <div class="o_row mb-2">
@@ -181,6 +188,7 @@
                             <field name="internal_cost" invisible="reservation_type != 'staff'" class="fw-bold text-info"/>
                             <field name="room_total" invisible="reservation_type == 'staff'"/>
                             <field name="service_total"/>
+                            <field name="late_checkout_penalty" class="fw-bold text-danger" invisible="late_checkout_penalty == 0"/>
                             <field name="total" class="fw-bold"/>
                             <field name="deposit" invisible="reservation_type == 'staff'" readonly="state in ('checked_out', 'cancelled')"/>
                             <field name="deposit_journal_id" string="Bank or Cash"

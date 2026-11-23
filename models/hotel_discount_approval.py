@@ -244,8 +244,21 @@ class HotelDiscountApproval(models.Model):
                     "state": "approved",
                     "approver_id": self.env.user,
                     "action_date": fields.Datetime.now(),
+                    "applied": True,
                 }
             )
+            # Apply approved discount directly to the reservation
+            if approval.reservation_id:
+                approval.reservation_id.sudo().write(
+                    {"discount": approval.discount_pct}
+                )
+                approval.reservation_id.message_post(
+                    body=_(
+                        "Approved discount of %(pct)s%% from request %(ref)s applied to stay.",
+                        pct=approval.discount_pct,
+                        ref=approval.name,
+                    )
+                )
             approval.message_post(
                 body=_(
                     "%(pct)s%% discount approved on %(reservation)s "
@@ -265,6 +278,8 @@ class HotelDiscountApproval(models.Model):
                 )
             approval._check_approve_rights()
             approval._check_not_requester()
+            if approval.reservation_id and approval.reservation_id.discount == approval.discount_pct:
+                approval.reservation_id.sudo().write({"discount": 0.0})
             approval.write(
                 {
                     "state": "rejected",
@@ -281,7 +296,9 @@ class HotelDiscountApproval(models.Model):
                 raise ValidationError(
                     _("Only draft or rejected discount requests can be reset.")
                 )
-            approval.write({"state": "draft", "approver_id": False})
+            if approval.reservation_id and approval.reservation_id.discount == approval.discount_pct:
+                approval.reservation_id.sudo().write({"discount": 0.0})
+            approval.write({"state": "draft", "approver_id": False, "applied": False})
         return True
 
     def _check_approve_rights(self):

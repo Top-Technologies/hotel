@@ -360,14 +360,7 @@ class HotelConfig(models.AbstractModel):
         if account and account.account_type == "asset_current":
             return account
 
-        xmlid = "hotel.room_charge_clearing_account"
-        account = self.env.ref(xmlid, raise_if_not_found=False)
-        if account and (not account.company_ids or company in account.company_ids):
-            if account.account_type != "asset_current":
-                account.account_type = "asset_current"
-            return account
-
-        Account = self.env["account.account"]
+        Account = self.env["account.account"].with_company(company)
         account = Account.search(
             [
                 ("code", "=", "RCHG"),
@@ -376,15 +369,20 @@ class HotelConfig(models.AbstractModel):
             limit=1,
         )
         if not account:
-            vals = {
-                "name": _("Room Charge Clearing"),
-                "code": "RCHG",
-                "account_type": "asset_current",
-                "company_ids": [Command.set(company.ids)],
-            }
-            if "create_asset" in Account._fields:
-                vals["create_asset"] = "no"
-            account = Account.create(vals)
+            xmlid = "hotel.room_charge_clearing_account"
+            ref_account = self.env.ref(xmlid, raise_if_not_found=False)
+            if ref_account and (not ref_account.company_ids or company in ref_account.company_ids):
+                account = ref_account
+            else:
+                vals = {
+                    "name": _("Room Charge Clearing"),
+                    "code": "RCHG",
+                    "account_type": "asset_current",
+                    "company_ids": [Command.set(company.ids)],
+                }
+                if "create_asset" in Account._fields:
+                    vals["create_asset"] = "no"
+                account = Account.create(vals)
 
         if account.account_type != "asset_current":
             account.account_type = "asset_current"

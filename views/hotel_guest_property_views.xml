@@ -117,23 +117,23 @@
         <field name="arch" type="xml">
             <form string="Guest Asset">
                 <header>
-                    <button name="action_request_deposit" type="object" string="Request Deposit"
-                            invisible="state != 'guest_possession'"/>
                     <button name="action_receive" type="object" string="Receive"
                             class="btn-primary"
                             invisible="state not in ('guest_possession', 'deposit_requested')"/>
-                    <button name="action_store" type="object" string="Store in Safe"
-                            class="btn-primary" invisible="state != 'received'"/>
-                    <button name="action_ready_return" type="object" string="Ready for Return"
-                            invisible="state != 'stored'"/>
                     <button name="action_return" type="object" string="Return to Guest"
                             class="btn-primary"
-                            invisible="state not in ('stored', 'ready_return')"/>
+                            invisible="state not in ('received', 'stored', 'ready_return')"/>
+                    <button name="action_request_deposit" type="object" string="Request Deposit"
+                            invisible="state != 'guest_possession'"/>
+                    <button name="action_store" type="object" string="Store in Safe"
+                            invisible="state != 'received'"/>
+                    <button name="action_ready_return" type="object" string="Ready for Return"
+                            invisible="state != 'stored'"/>
                     <button name="action_cancel" type="object" string="Cancel"
                             invisible="state in ('returned', 'cancelled')"/>
                     <button name="action_print_property_card" type="object" string="Print Card"/>
                     <field name="state" widget="statusbar"
-                           statusbar_visible="guest_possession,deposit_requested,received,stored,ready_return,returned"/>
+                           statusbar_visible="guest_possession,received,returned"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">

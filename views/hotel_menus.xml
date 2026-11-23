@@ -118,13 +118,17 @@
               parent="menu_hotel_guest_property" action="hotel_guest_property_overdue_action"
               sequence="16"/>
 
+    <!-- Safe Deposits -->
     <menuitem id="menu_hotel_safe_deposits" name="Safe Deposits"
               parent="menu_hotel_guest_property" action="hotel_safe_deposit_action"
               sequence="20"/>
 
+    <!-- Custody Records menu removed as requested -->
+    <!--
     <menuitem id="menu_hotel_custody_records" name="Custody Records"
               parent="menu_hotel_guest_property" action="hotel_property_custody_action"
               sequence="30"/>
+    -->
 
     <!-- Lost & Found -->
     <menuitem id="menu_hotel_lost_found_root" name="Lost &amp; Found"

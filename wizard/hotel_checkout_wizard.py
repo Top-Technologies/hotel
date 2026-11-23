@@ -97,6 +97,21 @@ class HotelCheckoutWizard(models.TransientModel):
     discount_amount = fields.Monetary(
         string="Discount", currency_field="currency_id", compute="_compute_charges"
     )
+    late_checkout_minutes = fields.Integer(
+        string="Late Check-out (Mins)",
+        compute="_compute_charges",
+        help="Minutes late past scheduled check-out time.",
+    )
+    late_checkout_penalty = fields.Monetary(
+        string="Late Check-out Fee",
+        currency_field="currency_id",
+        compute="_compute_charges",
+        help="Surcharge calculated for late check-out.",
+    )
+    late_checkout_desc = fields.Char(
+        string="Late Details",
+        compute="_compute_charges",
+    )
     service_total = fields.Monetary(
         string="Services", currency_field="currency_id", compute="_compute_charges"
     )
@@ -226,7 +241,7 @@ class HotelCheckoutWizard(models.TransientModel):
                 if held_props_count:
                     warnings.append(
                         _(
-                            "Notice: %(count)s stored guest asset(s) in custody will be automatically returned to the guest upon check-out.",
+                            "Notice: The guest has %(count)s asset(s) held in custody/safe. Please return them to the guest from Guest Property.",
                             count=held_props_count,
                         )
                     )
@@ -252,8 +267,13 @@ class HotelCheckoutWizard(models.TransientModel):
         "line_ids.price_subtotal",
         "line_ids.billable",
         "reservation_id.reservation_type",
+        "reservation_id.checkout",
+        "reservation_id.room_type_id",
+        "reservation_id.room_id",
     )
     def _compute_charges(self):
+        from datetime import datetime, time
+        import math
         for wizard in self:
             reservation = wizard.reservation_id
             start = wizard.checkin_at or reservation.actual_checkin or reservation.checkin
@@ -261,14 +281,42 @@ class HotelCheckoutWizard(models.TransientModel):
             nights = reservation._stay_nights(start, end) or reservation.nights
             room_charge = nights * reservation.rate
             discount_amount = room_charge * wizard.discount / 100.0
+
+            # Calculate Late Check-out Penalty
+            late_minutes = 0
+            late_penalty = 0.0
+            late_desc = False
+            room_type = reservation.room_type_id or reservation.room_id.room_type_id
+            scheduled = reservation.checkout
+            if room_type and room_type.checkout_time and scheduled:
+                h = int(room_type.checkout_time)
+                m = int(round((room_type.checkout_time - h) * 60))
+                scheduled = datetime.combine(scheduled.date(), time(hour=min(23, max(0, h)), minute=min(59, max(0, m))))
+
+            if scheduled and end and end > scheduled:
+                diff_seconds = (end - scheduled).total_seconds()
+                late_minutes = int(diff_seconds / 60)
+                grace = room_type.late_checkout_grace_minutes if room_type else 15
+                if late_minutes > grace:
+                    if room_type:
+                        late_penalty = room_type.compute_late_checkout_penalty(reservation.rate, late_minutes)
+                    else:
+                        blocks = math.ceil(late_minutes / 30.0)
+                        late_penalty = reservation.rate * 0.10 * blocks
+                    late_desc = _("%(mins)s mins late", mins=late_minutes)
+
+            wizard.late_checkout_minutes = late_minutes
+            wizard.late_checkout_penalty = late_penalty
+            wizard.late_checkout_desc = late_desc
+
             services = sum(
                 line.price_subtotal for line in wizard.line_ids if line.billable
             )
             if reservation.reservation_type == "staff":
                 # For staff stays, accommodation is tracked internally; total includes staff stay cost + services
-                charges = (reservation.internal_cost or (room_charge - discount_amount)) + services
+                charges = (reservation.internal_cost or (room_charge - discount_amount)) + services + late_penalty
             else:
-                charges = room_charge - discount_amount + services
+                charges = room_charge - discount_amount + services + late_penalty
             wizard.nights = nights
             wizard.room_charge = room_charge
             wizard.discount_amount = discount_amount
@@ -284,9 +332,25 @@ class HotelCheckoutWizard(models.TransientModel):
 
     def _suggest_values(self, reservation):
         """Defaults proposed to reception for ``reservation``."""
+        discount = reservation.discount or 0.0
+        # If reservation discount is not set, look up any approved discount request
+        if not discount:
+            approved = self.env["hotel.discount.approval"].search(
+                [
+                    ("reservation_id", "=", reservation.id),
+                    ("state", "=", "approved"),
+                ],
+                order="discount_pct desc",
+                limit=1,
+            )
+            if approved:
+                discount = approved.discount_pct
+                if not reservation.discount and reservation.state not in ('checked_out', 'cancelled'):
+                    reservation.sudo().write({"discount": discount})
+
         vals = {
             "checkout_at": self._suggest_checkout_at(reservation),
-            "discount": reservation.discount,
+            "discount": discount,
             "deposit": reservation.deposit_paid or reservation.deposit,
             "payment_journal_id": self.env["hotel.config"]
             ._hotel_payment_journal()
@@ -300,10 +364,14 @@ class HotelCheckoutWizard(models.TransientModel):
     @api.model
     def default_get(self, fields_list):
         result = super().default_get(fields_list)
-        reservation = self.env["hotel.reservation"].browse(
+        res_id = (
             result.get("reservation_id")
+            or self.env.context.get("default_reservation_id")
+            or (self.env.context.get("active_model") == "hotel.reservation" and self.env.context.get("active_id"))
         )
+        reservation = self.env["hotel.reservation"].browse(res_id) if res_id else self.env["hotel.reservation"]
         if reservation:
+            result["reservation_id"] = reservation.id
             reservation._bill_pending_room_consumption()
             vals = {
                 "guest_id": reservation.guest_id.id,
@@ -438,11 +506,11 @@ class HotelCheckoutWizard(models.TransientModel):
             {
                 "discount": self.discount,
                 "actual_checkout": self.checkout_at,
+                "late_checkout_minutes": self.late_checkout_minutes,
+                "late_checkout_penalty": self.late_checkout_penalty,
                 "state": "checked_out",
             }
         )
-        if hasattr(reservation, "_return_stored_guest_assets"):
-            reservation._return_stored_guest_assets()
         # Bill any chargeable consumption sheet the housekeeping has not posted
         # yet, so the guest folio (and its invoice) carries every charge.
         reservation._bill_pending_room_consumption()

@@ -176,6 +176,28 @@ class HotelGuestProperty(models.Model):
                 vals["name"] = self.env["ir.sequence"].next_by_code(
                     "hotel.guest.property"
                 )
+            if vals.get("reservation_id"):
+                res = self.env["hotel.reservation"].browse(vals["reservation_id"])
+                if res.exists():
+                    if not vals.get("guest_id") and res.guest_id:
+                        vals["guest_id"] = res.guest_id.id
+                    if not vals.get("room_id") and res.room_id:
+                        vals["room_id"] = res.room_id.id
+                    if not vals.get("expected_return_date") and res.checkout:
+                        vals["expected_return_date"] = res.checkout.date()
+            elif vals.get("room_id"):
+                res = self.env["hotel.reservation"].search([
+                    ("room_id", "=", vals["room_id"]),
+                    ("state", "=", "checked_in"),
+                ], order="actual_checkin desc, id desc", limit=1)
+                if res:
+                    if not vals.get("reservation_id"):
+                        vals["reservation_id"] = res.id
+                    if not vals.get("guest_id") and res.guest_id:
+                        vals["guest_id"] = res.guest_id.id
+                    if not vals.get("expected_return_date") and res.checkout:
+                        vals["expected_return_date"] = res.checkout.date()
+
             if not vals.get("guest_id"):
                 raise ValidationError(
                     _("A guest property must always be linked to a guest.")
@@ -238,25 +260,37 @@ class HotelGuestProperty(models.Model):
         if operator not in ("=", "!=") or not isinstance(value, bool):
             raise NotImplementedError()
         today = fields.Date.context_today(self)
-        domain = [
-            ("state", "in", ["received", "stored", "ready_return"]),
-            ("expected_return_date", "=", today),
+        is_true = (operator == "=" and value) or (operator == "!=" and not value)
+        if is_true:
+            return [
+                ("state", "in", ["received", "stored", "ready_return"]),
+                ("expected_return_date", "=", today),
+            ]
+        return [
+            "|",
+            ("state", "not in", ["received", "stored", "ready_return"]),
+            "|",
+            ("expected_return_date", "=", False),
+            ("expected_return_date", "!=", today),
         ]
-        if (operator == "=" and value) or (operator == "!=" and not value):
-            return domain
-        return ["!"] + domain
 
     def _search_return_overdue(self, operator, value):
         if operator not in ("=", "!=") or not isinstance(value, bool):
             raise NotImplementedError()
         today = fields.Date.context_today(self)
-        domain = [
-            ("state", "in", ["received", "stored", "ready_return"]),
-            ("expected_return_date", "<", today),
+        is_true = (operator == "=" and value) or (operator == "!=" and not value)
+        if is_true:
+            return [
+                ("state", "in", ["received", "stored", "ready_return"]),
+                ("expected_return_date", "<", today),
+            ]
+        return [
+            "|",
+            ("state", "not in", ["received", "stored", "ready_return"]),
+            "|",
+            ("expected_return_date", "=", False),
+            ("expected_return_date", ">=", today),
         ]
-        if (operator == "=" and value) or (operator == "!=" and not value):
-            return domain
-        return ["!"] + domain
 
     @api.model
     def _cron_expected_return_reminders(self):
@@ -317,6 +351,27 @@ class HotelGuestProperty(models.Model):
             if prop.reservation_id:
                 prop.guest_id = prop.reservation_id.guest_id
                 prop.room_id = prop.reservation_id.room_id
+                if not prop.expected_return_date and prop.reservation_id.checkout:
+                    prop.expected_return_date = prop.reservation_id.checkout.date()
+
+    @api.onchange("room_id")
+    def _onchange_room_id(self):
+        for prop in self:
+            if prop.room_id and not prop.reservation_id:
+                res = self.env["hotel.reservation"].search([
+                    ("room_id", "=", prop.room_id.id),
+                    ("state", "=", "checked_in"),
+                ], order="actual_checkin desc, id desc", limit=1)
+                if not res:
+                    res = self.env["hotel.reservation"].search([
+                        ("room_id", "=", prop.room_id.id),
+                        ("state", "in", ("checked_out", "confirmed")),
+                    ], order="actual_checkout desc, checkout desc, id desc", limit=1)
+                if res:
+                    prop.reservation_id = res
+                    prop.guest_id = res.guest_id
+                    if not prop.expected_return_date and res.checkout:
+                        prop.expected_return_date = res.checkout.date()
 
     @api.constrains("guest_id", "reservation_id", "state")
     def _check_stay_data(self):
@@ -421,9 +476,13 @@ class HotelGuestProperty(models.Model):
                     _("Only items with the guest or with a deposit request can be received.")
                 )
             if not prop.current_location_id:
-                raise ValidationError(
-                    _("Set the storage location before receiving %s.") % prop.name
-                )
+                default_loc = self.env["hotel.storage.location"].search([], limit=1)
+                if default_loc:
+                    prop.current_location_id = default_loc
+                else:
+                    raise ValidationError(
+                        _("Set the storage location before receiving %s.") % prop.name
+                    )
         now = fields.Datetime.now()
         self.write(
             {

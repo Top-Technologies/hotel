@@ -154,6 +154,33 @@ class HotelLostFound(models.Model):
         for vals in vals_list:
             if vals.get("name") in (False, None, "New"):
                 vals["name"] = self.env["ir.sequence"].next_by_code("hotel.lost.found")
+            # Auto-fetch previous guest and claimed by if reservation or room provided
+            if vals.get("previous_reservation_id"):
+                res = self.env["hotel.reservation"].browse(vals["previous_reservation_id"])
+                if res.exists():
+                    if not vals.get("previous_guest_id"):
+                        vals["previous_guest_id"] = res.guest_id.id
+                    if not vals.get("claimed_by_id"):
+                        vals["claimed_by_id"] = res.guest_id.id
+                    if not vals.get("found_room_id") and res.room_id:
+                        vals["found_room_id"] = res.room_id.id
+            elif vals.get("found_room_id"):
+                res = self.env["hotel.reservation"].search([
+                    ("room_id", "=", vals["found_room_id"]),
+                    ("state", "=", "checked_in"),
+                ], order="actual_checkin desc, id desc", limit=1)
+                if not res:
+                    res = self.env["hotel.reservation"].search([
+                        ("room_id", "=", vals["found_room_id"]),
+                        ("state", "in", ("checked_out", "confirmed")),
+                    ], order="actual_checkout desc, checkout desc, id desc", limit=1)
+                if res:
+                    if not vals.get("previous_reservation_id"):
+                        vals["previous_reservation_id"] = res.id
+                    if not vals.get("previous_guest_id"):
+                        vals["previous_guest_id"] = res.guest_id.id
+                    if not vals.get("claimed_by_id"):
+                        vals["claimed_by_id"] = res.guest_id.id
         return super().create(vals_list)
 
     def _compute_days_in_storage(self):
@@ -184,8 +211,33 @@ class HotelLostFound(models.Model):
         for item in self:
             if item.previous_reservation_id:
                 item.previous_guest_id = item.previous_reservation_id.guest_id
-                if not item.found_room_id:
+                item.claimed_by_id = item.previous_reservation_id.guest_id
+                if not item.found_room_id and item.previous_reservation_id.room_id:
                     item.found_room_id = item.previous_reservation_id.room_id
+
+    @api.onchange("found_room_id")
+    def _onchange_found_room_id(self):
+        for item in self:
+            if item.found_room_id:
+                reservation = self.env["hotel.reservation"].search([
+                    ("room_id", "=", item.found_room_id.id),
+                    ("state", "=", "checked_in"),
+                ], order="actual_checkin desc, id desc", limit=1)
+                if not reservation:
+                    reservation = self.env["hotel.reservation"].search([
+                        ("room_id", "=", item.found_room_id.id),
+                        ("state", "in", ("checked_out", "confirmed")),
+                    ], order="actual_checkout desc, checkout desc, id desc", limit=1)
+                if reservation:
+                    item.previous_reservation_id = reservation
+                    item.previous_guest_id = reservation.guest_id
+                    item.claimed_by_id = reservation.guest_id
+
+    @api.onchange("previous_guest_id")
+    def _onchange_previous_guest_id(self):
+        for item in self:
+            if item.previous_guest_id and not item.claimed_by_id:
+                item.claimed_by_id = item.previous_guest_id
 
     @api.constrains("state", "storage_location_id")
     def _check_storage_location(self):

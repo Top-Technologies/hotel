@@ -118,6 +118,21 @@
                         <page string="Amenities">
                             <field name="amenity_ids" widget="many2many_tags"/>
                         </page>
+                        <page string="Late Check-out Policy" name="late_checkout_policy">
+                            <group>
+                                <group string="Policy Activation &amp; Timing">
+                                    <field name="late_checkout_penalty_active"/>
+                                    <field name="checkout_time" widget="float_time" invisible="not late_checkout_penalty_active"/>
+                                    <field name="late_checkout_grace_minutes" invisible="not late_checkout_penalty_active"/>
+                                </group>
+                                <group string="Penalty Calculation" invisible="not late_checkout_penalty_active">
+                                    <field name="late_checkout_type"/>
+                                    <field name="late_checkout_rate_pct" invisible="late_checkout_type == 'fixed'"/>
+                                    <field name="late_checkout_fixed_amount" invisible="late_checkout_type != 'fixed'"/>
+                                    <field name="late_checkout_product_id" options="{'no_create': True}"/>
+                                </group>
+                            </group>
+                        </page>
                         <page string="Description">
                             <field name="note"/>
                         </page>

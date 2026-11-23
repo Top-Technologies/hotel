@@ -63,11 +63,8 @@ class HotelReservationProperty(models.Model):
             "domain": [("previous_reservation_id", "=", self.id)],
         }
 
-    def write(self, vals):
-        res = super().write(vals)
-        if vals.get("state") == "checked_out":
-            self._return_stored_guest_assets()
-        return res
+    # Automatic return on checkout removed per user request:
+    # guest assets must be returned manually from Guest Property.
 
     def _return_stored_guest_assets(self):
         """Automatically return any guest properties held in custody/safe upon checkout."""

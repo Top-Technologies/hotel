@@ -102,7 +102,86 @@ class HotelRoomType(models.Model):
         help="How a room of this type is prepared for the next guest. Empty "
         "means the hotel default configured in the settings.",
     )
+    # Late check-out policy
+    late_checkout_penalty_active = fields.Boolean(
+        string="Apply Late Check-out Penalty",
+        default=True,
+        help="If enabled, check-out after the scheduled check-out time incurs a penalty fee.",
+    )
+    checkout_time = fields.Float(
+        string="Standard Check-out Time",
+        default=11.0,
+        help="Standard check-out time for rooms of this type (e.g. 11.0 for 11:00 AM, 16.0 for 04:00 PM).",
+    )
+    late_checkout_grace_minutes = fields.Integer(
+        string="Grace Period (Minutes)",
+        default=15,
+        help="Tolerance in minutes after check-out time before late penalty applies.",
+    )
+    late_checkout_type = fields.Selection(
+        selection=[
+            ("per_30min", "Per 30 Minutes Block"),
+            ("hourly", "Hourly Rate"),
+            ("tiered", "Tiered (Half / Full Day)"),
+            ("fixed", "Fixed Surcharge"),
+        ],
+        string="Penalty Calculation",
+        default="per_30min",
+        required=True,
+        help="Method used to calculate the late check-out fee.",
+    )
+    late_checkout_rate_pct = fields.Float(
+        string="Penalty Rate (%)",
+        default=10.0,
+        help="Percentage of the room rate charged per block (e.g. 10% per 30 minutes, or 50% for half day).",
+    )
+    late_checkout_fixed_amount = fields.Monetary(
+        string="Fixed Penalty Amount",
+        currency_field="currency_id",
+        default=0.0,
+        help="Fixed fee charged if calculation method is Fixed Surcharge.",
+    )
+    late_checkout_product_id = fields.Many2one(
+        comodel_name="product.product",
+        string="Late Check-out Product",
+        domain="[('type', '=', 'service')]",
+        help="Optional service product used on the folio invoice for late check-out charges.",
+    )
+
     note = fields.Text(string="Description")
+
+    def compute_late_checkout_penalty(self, room_rate, late_minutes):
+        """Calculate the late checkout penalty given the room rate and late minutes."""
+        self.ensure_one()
+        if not self.late_checkout_penalty_active or late_minutes <= self.late_checkout_grace_minutes:
+            return 0.0
+
+        penalty_type = self.late_checkout_type or "per_30min"
+        rate = room_rate if room_rate is not None and room_rate > 0 else (self.base_price or 0.0)
+
+        if penalty_type == "fixed":
+            return self.late_checkout_fixed_amount
+
+        elif penalty_type == "per_30min":
+            import math
+            blocks = math.ceil(late_minutes / 30.0)
+            pct = (self.late_checkout_rate_pct or 10.0) / 100.0
+            return rate * pct * blocks
+
+        elif penalty_type == "hourly":
+            import math
+            hours = math.ceil(late_minutes / 60.0)
+            pct = (self.late_checkout_rate_pct or 20.0) / 100.0
+            return rate * pct * hours
+
+        elif penalty_type == "tiered":
+            if late_minutes <= 120:
+                pct = (self.late_checkout_rate_pct or 50.0) / 100.0
+                return rate * pct
+            else:
+                return rate
+
+        return 0.0
 
     _sql_constraints = [
         (
@@ -133,7 +212,13 @@ class HotelRoomType(models.Model):
                 self.env.cr.execute(
                     """
                     ALTER TABLE hotel_room_type
-                    ADD COLUMN IF NOT EXISTS breakfast_price numeric DEFAULT 0.0;
+                    ADD COLUMN IF NOT EXISTS breakfast_price numeric DEFAULT 0.0,
+                    ADD COLUMN IF NOT EXISTS late_checkout_penalty_active boolean DEFAULT true,
+                    ADD COLUMN IF NOT EXISTS checkout_time double precision DEFAULT 11.0,
+                    ADD COLUMN IF NOT EXISTS late_checkout_grace_minutes integer DEFAULT 15,
+                    ADD COLUMN IF NOT EXISTS late_checkout_type varchar DEFAULT 'per_30min',
+                    ADD COLUMN IF NOT EXISTS late_checkout_rate_pct double precision DEFAULT 10.0,
+                    ADD COLUMN IF NOT EXISTS late_checkout_fixed_amount numeric DEFAULT 0.0;
                     """
                 )
         except Exception:
