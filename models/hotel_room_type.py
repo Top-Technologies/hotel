@@ -51,6 +51,11 @@ class HotelRoomType(models.Model):
         currency_field="currency_id",
         help="Standard rate per night, used as the default reservation rate.",
     )
+    breakfast_price = fields.Monetary(
+        string="Breakfast Price / Guest",
+        currency_field="currency_id",
+        help="Breakfast charge per guest per night for this room type. If zero, falls back to hotel configuration.",
+    )
     amenity_ids = fields.Many2many(
         comodel_name="hotel.amenity",
         string="Standard Amenities",
@@ -120,3 +125,16 @@ class HotelRoomType(models.Model):
                     "hotel.room.type"
                 ) or False
         return super().create(vals_list)
+
+    def _register_hook(self):
+        super()._register_hook()
+        try:
+            with self.env.cr.savepoint():
+                self.env.cr.execute(
+                    """
+                    ALTER TABLE hotel_room_type
+                    ADD COLUMN IF NOT EXISTS breakfast_price numeric DEFAULT 0.0;
+                    """
+                )
+        except Exception:
+            pass

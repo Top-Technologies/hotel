@@ -19,7 +19,11 @@
                 <group>
                     <group string="Stay">
                         <field name="reservation_id" invisible="1"/>
-                        <field name="guest_id"/>
+                        <field name="reservation_type"/>
+                        <field name="staff_id" invisible="reservation_type != 'staff'"/>
+                        <field name="staff_company_id" string="Staff Company" invisible="reservation_type != 'staff'"/>
+                        <field name="staff_work_location_id" string="Staff Branch" invisible="reservation_type != 'staff'"/>
+                        <field name="guest_id" invisible="reservation_type == 'staff'"/>
                         <field name="room_id"/>
                         <field name="checkin_at"/>
                         <field name="checkout_at"/>
@@ -28,6 +32,7 @@
                         <field name="rate"/>
                         <field name="discount"
                                decoration-danger="discount_blocking"/>
+                        <field name="internal_cost" invisible="reservation_type != 'staff'"/>
                         <field name="currency_id" invisible="1"/>
                     </group>
                 </group>
@@ -39,7 +44,7 @@
                         <field name="service_total"/>
                         <field name="charges_total"/>
                     </group>
-                    <group string="Settlement">
+                    <group string="Settlement" invisible="reservation_type == 'staff'">
                         <field name="deposit"/>
                         <field name="balance_due" class="fw-bold text-primary" invisible="balance_due == 0 and refund_due &gt; 0"/>
                         <field name="refund_due" class="fw-bold text-success" invisible="refund_due == 0"/>
@@ -84,14 +89,23 @@
                         </field>
                     </page>
                     <page string="Billing" name="billing">
-                        <group>
+                        <field name="staff_is_cross_company" invisible="1"/>
+                        <div class="alert alert-info" role="alert" invisible="reservation_type != 'staff'">
+                            <strong>Staff Reservation:</strong> Accommodation charge is tracked internally as staff cost (<field name="internal_cost" widget="monetary"/>).
+                            <span invisible="not staff_company_id">
+                                Assigned entity: <field name="staff_company_id" class="fw-bold" options="{'no_open': True}"/>
+                                <span invisible="not staff_work_location_id"> (Branch: <field name="staff_work_location_id" options="{'no_open': True}"/>)</span>.
+                            </span>
+                            No guest room invoice will be created.
+                        </div>
+                        <group invisible="reservation_type == 'staff'">
                             <field name="create_invoice"/>
                             <field name="settle_balance"
                                    invisible="not create_invoice"/>
                             <field name="payment_journal_id"
                                    invisible="not create_invoice or not settle_balance"/>
                         </group>
-                        <p class="text-muted" invisible="not create_invoice">
+                        <p class="text-muted" invisible="not create_invoice or reservation_type == 'staff'">
                             The guest invoice posts the room revenue to the income account and
                             analytic account of the room type. Advances collected at
                             booking/check-in are applied to the invoice, then the remaining

@@ -14,6 +14,40 @@ class HotelCheckoutWizard(models.TransientModel):
         readonly=True,
         ondelete="cascade",
     )
+    reservation_type = fields.Selection(
+        related="reservation_id.reservation_type",
+        string="Reservation Category",
+        readonly=True,
+    )
+    staff_id = fields.Many2one(
+        comodel_name="hr.employee",
+        related="reservation_id.staff_id",
+        string="Staff Member",
+        readonly=True,
+    )
+    staff_company_id = fields.Many2one(
+        comodel_name="res.company",
+        related="reservation_id.staff_company_id",
+        string="Staff Company",
+        readonly=True,
+    )
+    staff_work_location_id = fields.Many2one(
+        comodel_name="hr.work.location",
+        related="reservation_id.staff_work_location_id",
+        string="Staff Branch / Location",
+        readonly=True,
+    )
+    staff_is_cross_company = fields.Boolean(
+        related="reservation_id.staff_is_cross_company",
+        string="Cross-Company / Branch Stay",
+        readonly=True,
+    )
+    internal_cost = fields.Monetary(
+        related="reservation_id.internal_cost",
+        string="Internal Staff Cost",
+        currency_field="currency_id",
+        readonly=True,
+    )
     guest_id = fields.Many2one(
         comodel_name="res.partner", string="Guest", readonly=True
     )
@@ -185,6 +219,17 @@ class HotelCheckoutWizard(models.TransientModel):
                                 discount=discount,
                             )
                         )
+                held_props_count = self.env["hotel.guest.property"].search_count([
+                    ("reservation_id", "=", reservation.id),
+                    ("state", "in", ("received", "stored", "ready_return", "deposit_requested")),
+                ])
+                if held_props_count:
+                    warnings.append(
+                        _(
+                            "Notice: %(count)s stored guest asset(s) in custody will be automatically returned to the guest upon check-out.",
+                            count=held_props_count,
+                        )
+                    )
             wizard.inspection_blocking = inspection_blocking
             wizard.discount_blocking = discount_blocking
             wizard.checkout_warning = "\n".join(warnings) if warnings else False
@@ -206,6 +251,7 @@ class HotelCheckoutWizard(models.TransientModel):
         "deposit",
         "line_ids.price_subtotal",
         "line_ids.billable",
+        "reservation_id.reservation_type",
     )
     def _compute_charges(self):
         for wizard in self:
@@ -218,7 +264,11 @@ class HotelCheckoutWizard(models.TransientModel):
             services = sum(
                 line.price_subtotal for line in wizard.line_ids if line.billable
             )
-            charges = room_charge - discount_amount + services
+            if reservation.reservation_type == "staff":
+                # For staff stays, accommodation is tracked internally; total includes staff stay cost + services
+                charges = (reservation.internal_cost or (room_charge - discount_amount)) + services
+            else:
+                charges = room_charge - discount_amount + services
             wizard.nights = nights
             wizard.room_charge = room_charge
             wizard.discount_amount = discount_amount
@@ -234,7 +284,7 @@ class HotelCheckoutWizard(models.TransientModel):
 
     def _suggest_values(self, reservation):
         """Defaults proposed to reception for ``reservation``."""
-        return {
+        vals = {
             "checkout_at": self._suggest_checkout_at(reservation),
             "discount": reservation.discount,
             "deposit": reservation.deposit_paid or reservation.deposit,
@@ -242,6 +292,10 @@ class HotelCheckoutWizard(models.TransientModel):
             ._hotel_payment_journal()
             .id,
         }
+        if reservation.reservation_type == "staff":
+            vals["create_invoice"] = False
+            vals["settle_balance"] = False
+        return vals
 
     @api.model
     def default_get(self, fields_list):
@@ -251,13 +305,15 @@ class HotelCheckoutWizard(models.TransientModel):
         )
         if reservation:
             reservation._bill_pending_room_consumption()
-            result.update(
-                {
-                    "guest_id": reservation.guest_id.id,
-                    "room_id": reservation.room_id.id,
-                    **self._suggest_values(reservation),
-                }
-            )
+            vals = {
+                "guest_id": reservation.guest_id.id,
+                "room_id": reservation.room_id.id,
+                **self._suggest_values(reservation),
+            }
+            if reservation.reservation_type == "staff":
+                vals["create_invoice"] = False
+                vals["settle_balance"] = False
+            result.update(vals)
         return result
 
     @api.model_create_multi
@@ -385,11 +441,13 @@ class HotelCheckoutWizard(models.TransientModel):
                 "state": "checked_out",
             }
         )
+        if hasattr(reservation, "_return_stored_guest_assets"):
+            reservation._return_stored_guest_assets()
         # Bill any chargeable consumption sheet the housekeeping has not posted
         # yet, so the guest folio (and its invoice) carries every charge.
         reservation._bill_pending_room_consumption()
         invoice = self.env["account.move"]
-        if self.create_invoice:
+        if self.create_invoice and reservation.reservation_type != "staff":
             invoice = reservation._action_create_folio_invoice()
             invoice.action_post()
             # Apply the advances already booked at booking / check-in.
@@ -438,16 +496,31 @@ class HotelCheckoutWizard(models.TransientModel):
                     notes=_("Automatic cleaning after check-out of %s.")
                     % reservation.name,
                 )
-        reservation.message_post(
-            body=_(
-                "Checked out. %(room_charge)s room charge + %(services)s services, "
-                "deposit %(deposit)s deducted. Invoice: %(invoice)s.",
-                room_charge=self._format_amount(reservation.room_total),
-                services=self._format_amount(reservation.service_total),
-                deposit=self._format_amount(self.deposit),
-                invoice=invoice.name or _("not created"),
+        if reservation.reservation_type == "staff":
+            staff_info = ""
+            if reservation.staff_company_id:
+                branch_str = f" - {reservation.staff_work_location_id.name}" if reservation.staff_work_location_id else ""
+                staff_info = f" [{reservation.staff_company_id.name}{branch_str}]"
+            reservation.message_post(
+                body=_(
+                    "Staff member%(staff_info)s checked out. Internal stay cost: %(internal_cost)s (%(nights)s nights). "
+                    "No guest invoice generated.",
+                    staff_info=staff_info,
+                    internal_cost=self._format_amount(reservation.internal_cost or reservation.room_total),
+                    nights=reservation.billable_nights or reservation.nights,
+                )
             )
-        )
+        else:
+            reservation.message_post(
+                body=_(
+                    "Checked out. %(room_charge)s room charge + %(services)s services, "
+                    "deposit %(deposit)s deducted. Invoice: %(invoice)s.",
+                    room_charge=self._format_amount(reservation.room_total),
+                    services=self._format_amount(reservation.service_total),
+                    deposit=self._format_amount(self.deposit),
+                    invoice=invoice.name or _("not created"),
+                )
+            )
         if self.notes:
             reservation.message_post(body=_("Check-out note: %s") % self.notes)
         if invoice:

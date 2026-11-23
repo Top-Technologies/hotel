@@ -37,8 +37,9 @@ class HotelLostFound(models.Model):
     )
     found_room_id = fields.Many2one(
         comodel_name="hotel.room",
-        string="Room (if known)",
-        ondelete="set null",
+        string="Room",
+        required=True,
+        ondelete="restrict",
         index=True,
     )
     storage_location_id = fields.Many2one(

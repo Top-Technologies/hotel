@@ -720,6 +720,14 @@ class HotelConfig(models.AbstractModel):
     # Reservation Defaults
     # -------------------------------------------------------------------------
     @api.model
+    def _hotel_breakfast_price(self, company=None):
+        """Default breakfast price per eligible guest per night."""
+        company = company or self.env.company
+        if hasattr(company, "hotel_breakfast_price"):
+            return float(company.hotel_breakfast_price or 0.0)
+        return self._hotel_float_param("breakfast_price", 0.0, company=company)
+
+    @api.model
     def _hotel_default_checkin_time(self, company=None):
         return self._hotel_float_param("default_checkin_time", 14.0, company=company)
 

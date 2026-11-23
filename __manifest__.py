@@ -1,6 +1,6 @@
 {
     "name": "Hotel & Restaurant",
-    "version": "18.0.1.4.0",
+    "version": "18.0.1.5.0",
     "category": "Hotel Management",
     "summary": "dina Hotel & Restaurant Management: rooms, reservations, front desk, housekeeping and guest billing",
     "description": """
@@ -60,6 +60,7 @@ Compatible with Odoo 18 Community (no Enterprise dependencies).
         "views/hotel_room_type_views.xml",
         "views/hotel_room_views.xml",
         "views/hotel_reservation_views.xml",
+        "views/hotel_breakfast_consumption_views.xml",
         "views/hotel_housekeeping_views.xml",
         "views/hotel_room_consumption_views.xml",
         "views/hotel_supply_requisition_views.xml",

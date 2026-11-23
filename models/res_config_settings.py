@@ -228,6 +228,12 @@ class ResConfigSettings(models.TransientModel):
         string="Default Reservation Status",
         help="Initial state for new reservations when created.",
     )
+    hotel_breakfast_price = fields.Float(
+        string="Breakfast Price / Guest / Night",
+        related="company_id.hotel_breakfast_price",
+        readonly=False,
+        help="Default breakfast charge per eligible guest per night.",
+    )
 
     # Room Consumption Defaults
     hotel_consumable_standard_qty = fields.Float(

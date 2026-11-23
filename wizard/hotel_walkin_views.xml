@@ -19,13 +19,15 @@
                         <field name="phone" widget="phone"/>
                         <field name="email" widget="email"/>
                         <field name="nationality_id" invisible="customer_type == 'corporate'"/>
-                        <field name="id_type" invisible="customer_type == 'corporate'"/>
+                        <field name="id_type" invisible="customer_type == 'corporate'" required="customer_type != 'corporate'"/>
                         <field name="id_number"
-                               invisible="customer_type == 'corporate' or not id_type"/>
+                               invisible="customer_type == 'corporate'"
+                               required="customer_type != 'corporate'"/>
                         <field name="id_document"
                                filename="id_document_filename"
                                widget="binary"
-                               invisible="customer_type == 'corporate'"/>
+                               invisible="customer_type == 'corporate'"
+                               required="customer_type != 'corporate'"/>
                         <field name="id_document_filename" invisible="1"/>
                     </group>
                     <group string="Stay">

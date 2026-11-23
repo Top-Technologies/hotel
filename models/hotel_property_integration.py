@@ -63,6 +63,89 @@ class HotelReservationProperty(models.Model):
             "domain": [("previous_reservation_id", "=", self.id)],
         }
 
+    def write(self, vals):
+        res = super().write(vals)
+        if vals.get("state") == "checked_out":
+            self._return_stored_guest_assets()
+        return res
+
+    def _return_stored_guest_assets(self):
+        """Automatically return any guest properties held in custody/safe upon checkout."""
+        held_states = ("received", "stored", "ready_return", "deposit_requested")
+        for reservation in self:
+            properties = self.env["hotel.guest.property"].search([
+                ("reservation_id", "=", reservation.id),
+                ("state", "in", held_states),
+            ])
+            if not properties and reservation.guest_id:
+                properties = self.env["hotel.guest.property"].search([
+                    ("guest_id", "=", reservation.guest_id.id),
+                    ("room_id", "=", reservation.room_id.id),
+                    ("state", "in", held_states),
+                ])
+            if not properties:
+                continue
+
+            now = fields.Datetime.now()
+            recipient_name = (
+                reservation.guest_id.name
+                or (reservation.staff_id.name if reservation.staff_id else _("Guest"))
+            )
+
+            for prop in properties:
+                # 1. Release open safe deposits linked to this property
+                open_deposits = prop.deposit_ids.filtered(lambda d: d.state in ("received", "stored"))
+                if open_deposits:
+                    open_deposits.write({
+                        "state": "released",
+                        "released_by_id": self.env.user.id,
+                        "released_date": now,
+                    })
+                    for dep in open_deposits:
+                        dep.message_post(
+                            body=_(
+                                "Safe deposit automatically released upon check-out of %(reservation)s.",
+                                reservation=reservation.name,
+                            )
+                        )
+
+                # 2. Return the property to the guest
+                last_loc = prop.current_location_id.id or prop._last_location_id()
+                ret_name = prop.returned_to or recipient_name
+                prop.write({
+                    "state": "returned",
+                    "returned_date": now,
+                    "returned_by_id": self.env.user.id,
+                    "returned_to": ret_name,
+                    "current_location_id": False,
+                })
+                prop.message_post(
+                    body=_(
+                        "Guest asset automatically returned to %(recipient)s upon check-out of %(reservation)s.",
+                        recipient=ret_name,
+                        reservation=reservation.name,
+                    )
+                )
+                prop._log_custody(
+                    "return",
+                    from_location_id=last_loc,
+                    to_user_id=self.env.user.id,
+                    notes=_(
+                        "Automatically returned upon check-out of %(reservation)s to %(recipient)s.",
+                        reservation=reservation.name,
+                        recipient=ret_name,
+                    ),
+                )
+                reservation.message_post(
+                    body=_(
+                        "Stored guest asset <b>%(name)s</b> (%(desc)s) automatically returned to %(recipient)s upon check-out.",
+                        name=prop.name,
+                        desc=prop.description,
+                        recipient=ret_name,
+                    )
+                )
+
+
 
 class HotelRoomProperty(models.Model):
     """Guest assets currently linked to a room."""

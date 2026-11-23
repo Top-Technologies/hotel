@@ -88,10 +88,64 @@ class HotelSupplyRequisition(models.Model):
     def create(self, vals_list):
         for vals in vals_list:
             if vals.get("name") in (False, None, "New"):
-                vals["name"] = self.env["ir.sequence"].next_by_code(
+                company_id = vals.get("company_id") or self.env.company.id
+                seq_name = self.env["ir.sequence"].with_company(company_id).next_by_code(
                     "hotel.supply.requisition",
-                ) or "New"
+                )
+                if not seq_name:
+                    seq_name = self.env["ir.sequence"].sudo().search([
+                        ("code", "=", "hotel.supply.requisition"),
+                    ], limit=1).next_by_id()
+                vals["name"] = seq_name or "New"
         return super().create(vals_list)
+
+    def _ensure_picking_type_sequence(self, picking_type, company):
+        """Ensure the picking type has a sequence whose counter is strictly ahead of existing pickings."""
+        if not picking_type:
+            return
+        company = company or self.env.company
+        if not picking_type.sequence_id:
+            sequence_code = picking_type.sequence_code or picking_type.code or "HS"
+            if picking_type.warehouse_id:
+                sequence_name = _(
+                    "%(warehouse)s Sequence %(code)s",
+                    warehouse=picking_type.warehouse_id.name,
+                    code=sequence_code,
+                )
+                prefix = "%s/%s/" % (picking_type.warehouse_id.code, sequence_code)
+                seq_company = picking_type.warehouse_id.company_id
+            else:
+                sequence_name = _("Sequence %(code)s", code=sequence_code)
+                prefix = "%s/" % sequence_code
+                seq_company = picking_type.company_id or company
+            picking_type.sudo().sequence_id = self.env["ir.sequence"].sudo().create(
+                {
+                    "name": sequence_name,
+                    "prefix": prefix,
+                    "padding": 5,
+                    "company_id": seq_company.id if seq_company else False,
+                },
+            )
+
+        seq = picking_type.sequence_id
+        if seq and seq.prefix:
+            self.env.cr.execute(
+                """
+                SELECT name FROM stock_picking
+                WHERE company_id = %s AND name LIKE %s
+                ORDER BY length(name) DESC, name DESC LIMIT 100;
+                """,
+                (company.id, seq.prefix + "%"),
+            )
+            rows = self.env.cr.fetchall()
+            max_num = 0
+            import re
+            for (pname,) in rows:
+                m = re.search(r"(\d+)$", pname)
+                if m:
+                    max_num = max(max_num, int(m.group(1)))
+            if max_num >= seq.number_next_actual:
+                seq.sudo().write({"number_next": max_num + 1})
 
     def action_request(self):
         """Submit the requisition and create the internal stock transfer."""
@@ -104,11 +158,12 @@ class HotelSupplyRequisition(models.Model):
                 raise ValidationError(
                     _("Source warehouse and destination cart cannot be the same location."),
                 )
-            picking_type = req._hotel_internal_picking_type()
+            picking_type = req._hotel_internal_picking_type(company=req.company_id)
             if not picking_type:
                 raise UserError(
                     _("No internal transfer operation type is configured."),
                 )
+            req._ensure_picking_type_sequence(picking_type, req.company_id)
             precision = self.env["decimal.precision"].precision_get("Product Unit")
             move_commands = []
             for line in req.line_ids:
@@ -136,6 +191,7 @@ class HotelSupplyRequisition(models.Model):
             picking = self.env["stock.picking"].sudo().create(
                 {
                     "picking_type_id": picking_type.id,
+                    "company_id": req.company_id.id,
                     "origin": req.name,
                     "location_id": req.source_location_id.id,
                     "location_dest_id": req.dest_location_id.id,

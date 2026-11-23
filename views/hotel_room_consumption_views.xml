@@ -53,7 +53,8 @@
                 <sheet>
                     <div class="oe_button_box" name="button_box">
                         <button name="action_open_reservation" type="object"
-                                class="oe_stat_button" icon="fa-calendar">
+                                class="oe_stat_button" icon="fa-calendar"
+                                invisible="not reservation_id">
                             <div class="o_stat_info">
                                 <span class="o_stat_text">Reservation</span>
                             </div>
@@ -81,21 +82,22 @@
                         </button>
                     </div>
                     <div class="oe_title">
+                        <label for="name" string="Consumption Reference"/>
                         <h1><field name="name" readonly="1"/></h1>
-                        <h3>Room <field name="room_id"/></h3>
                     </div>
                     <group>
-                        <group>
-                            <field name="reservation_id"/>
-                            <field name="guest_id"/>
-                            <field name="room_id"/>
+                        <group string="Room &amp; Stay">
+                            <field name="room_id" placeholder="Select Room..." options="{'no_create': True}" required="1"/>
+                            <field name="reservation_id" domain="[('room_id', '=', room_id)]" options="{'no_create': True}" placeholder="Auto-detected or select stay..."/>
+                            <field name="guest_id" readonly="1"/>
                             <field name="stay_date"/>
                         </group>
-                        <group>
+                        <group string="Details &amp; Totals">
                             <field name="employee_id"/>
+                            <field name="session_type"/>
                             <field name="currency_id" invisible="1"/>
                             <field name="recorded_total"/>
-                            <field name="total_charge"/>
+                            <field name="total_charge" class="fw-bold text-primary"/>
                             <field name="billable_line_count"/>
                             <field name="picking_id" readonly="1"/>
                             <field name="refill_picking_id" readonly="1" invisible="not refill_picking_id"/>
@@ -200,9 +202,10 @@
         <field name="res_model">hotel.room.consumption</field>
         <field name="view_mode">list,form,pivot</field>
         <field name="search_view_id" ref="hotel_room_consumption_view_search"/>
+        <field name="context">{'search_default_group_room': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
-                Record minibar and room supplies consumption
+                Record minibar and room supplies consumption by room
             </p>
         </field>
     </record>

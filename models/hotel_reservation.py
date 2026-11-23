@@ -25,10 +25,63 @@ class HotelReservation(models.Model):
         copy=False,
         index=True,
     )
+    reservation_type = fields.Selection(
+        selection=[
+            ("guest", "Guest"),
+            ("staff", "Staff"),
+        ],
+        string="Reservation Type",
+        default="guest",
+        required=True,
+        tracking=True,
+        index=True,
+        help="Classification: normal paying guest or staff internal accommodation.",
+    )
+    staff_id = fields.Many2one(
+        comodel_name="hr.employee",
+        string="Staff Member",
+        tracking=True,
+        index=True,
+        help="Staff member staying at the hotel.",
+    )
+    staff_company_id = fields.Many2one(
+        comodel_name="res.company",
+        string="Staff Company",
+        compute="_compute_staff_details",
+        store=True,
+        readonly=False,
+        tracking=True,
+        help="Company or legal entity employing this staff member.",
+    )
+    staff_department_id = fields.Many2one(
+        comodel_name="hr.department",
+        string="Staff Department",
+        compute="_compute_staff_details",
+        store=True,
+        readonly=False,
+        tracking=True,
+        help="Department of the staff member.",
+    )
+    staff_work_location_id = fields.Many2one(
+        comodel_name="hr.work.location",
+        string="Staff Branch / Location",
+        compute="_compute_staff_details",
+        store=True,
+        readonly=False,
+        tracking=True,
+        help="Branch office or work location where the staff member is based.",
+    )
+    staff_is_cross_company = fields.Boolean(
+        string="From Other Company / Branch",
+        compute="_compute_staff_details",
+        store=True,
+        tracking=True,
+        help="Flagged automatically if the staff member belongs to another company or branch.",
+    )
     guest_id = fields.Many2one(
         comodel_name="res.partner",
         string="Guest",
-        required=True,
+        required=False,
         ondelete="restrict",
         tracking=True,
         index=True,
@@ -92,6 +145,52 @@ class HotelReservation(models.Model):
     )
     adults = fields.Integer(string="Adults", default=1, required=True)
     children = fields.Integer(string="Children", default=0)
+    breakfast_option = fields.Selection(
+        selection=[
+            ("without", "Without Breakfast"),
+            ("with", "With Breakfast"),
+        ],
+        string="Breakfast",
+        default="without",
+        required=True,
+        tracking=True,
+        index=True,
+        help="Whether breakfast is included in the room stay rate.",
+    )
+    base_rate = fields.Monetary(
+        string="Base Room Rate",
+        currency_field="currency_id",
+        compute="_compute_base_rate",
+        store=True,
+        readonly=False,
+        precompute=True,
+        tracking=True,
+        help="Nightly room charge before breakfast and discount.",
+    )
+    breakfast_price = fields.Monetary(
+        string="Breakfast Price / Guest",
+        currency_field="currency_id",
+        compute="_compute_breakfast_pricing",
+        store=True,
+        readonly=False,
+        precompute=True,
+        tracking=True,
+        help="Price of breakfast per guest per night.",
+    )
+    breakfast_amount_per_night = fields.Monetary(
+        string="Breakfast / Night",
+        currency_field="currency_id",
+        compute="_compute_breakfast_pricing",
+        store=True,
+        help="Daily breakfast amount for all eligible guests.",
+    )
+    breakfast_total = fields.Monetary(
+        string="Total Breakfast Amount",
+        currency_field="currency_id",
+        compute="_compute_breakfast_pricing",
+        store=True,
+        help="Total breakfast charges across the stay duration.",
+    )
     rate = fields.Monetary(
         string="Rate / Night",
         currency_field="currency_id",
@@ -100,8 +199,14 @@ class HotelReservation(models.Model):
         readonly=False,
         precompute=True,
         tracking=True,
-        help="Nightly rate. Defaults to the room type rate, or to the guest "
-        "pricelist price when the room type has a revenue product.",
+        help="Nightly rate. Includes breakfast amount per night when With Breakfast is selected.",
+    )
+    internal_cost = fields.Monetary(
+        string="Internal Staff Cost",
+        currency_field="currency_id",
+        compute="_compute_internal_cost",
+        store=True,
+        help="Total internal accommodation cost captured for the staff stay.",
     )
     discount = fields.Float(
         string="Discount (%)",
@@ -258,6 +363,19 @@ class HotelReservation(models.Model):
     feedback_count = fields.Integer(
         string="Feedback", compute="_compute_feedback_count",
     )
+    breakfast_consumption_ids = fields.One2many(
+        comodel_name="hotel.breakfast.consumption",
+        inverse_name="reservation_id",
+        string="Breakfast Consumption Records",
+    )
+    breakfast_count = fields.Integer(
+        string="Total Breakfasts",
+        compute="_compute_breakfast_counts",
+    )
+    breakfast_used_count = fields.Integer(
+        string="Consumed Breakfasts",
+        compute="_compute_breakfast_counts",
+    )
     booked_room_ids = fields.Many2many(
         comodel_name="hotel.room",
         string="Rooms Unavailable",
@@ -391,9 +509,120 @@ class HotelReservation(models.Model):
 
         return res
 
+    @api.depends("staff_id", "company_id")
+    def _compute_staff_details(self):
+        for res in self:
+            if res.staff_id:
+                res.staff_company_id = res.staff_id.company_id
+                res.staff_department_id = res.staff_id.department_id
+                res.staff_work_location_id = res.staff_id.work_location_id
+                res.staff_is_cross_company = bool(
+                    res.staff_id.company_id and res.company_id and res.staff_id.company_id != res.company_id
+                )
+            else:
+                res.staff_company_id = False
+                res.staff_department_id = False
+                res.staff_work_location_id = False
+                res.staff_is_cross_company = False
+
+    @api.onchange("staff_id")
+    def _onchange_staff_id(self):
+        if self.staff_id:
+            self.staff_company_id = self.staff_id.company_id
+            self.staff_department_id = self.staff_id.department_id
+            self.staff_work_location_id = self.staff_id.work_location_id
+            self.staff_is_cross_company = bool(
+                self.staff_id.company_id and self.company_id and self.staff_id.company_id != self.company_id
+            )
+            partner = self.staff_id.work_contact_id or self.staff_id.user_id.partner_id
+            if not partner:
+                partner = self.env["res.partner"].search([("name", "=", self.staff_id.name)], limit=1)
+                if not partner:
+                    partner = self.env["res.partner"].create({"name": self.staff_id.name})
+            self.guest_id = partner
+            if not self.guest_phone and self.staff_id.work_phone:
+                self.guest_phone = self.staff_id.work_phone
+
+    @api.onchange("staff_company_id")
+    def _onchange_staff_company_id(self):
+        res = {}
+        company = self.staff_company_id._origin or self.staff_company_id
+        if company:
+            # When changing company, reset staff member, department, and work location if they belonged to another company
+            if self.staff_id and (self.staff_id.company_id != company):
+                self.staff_id = False
+                self.staff_department_id = False
+                self.staff_work_location_id = False
+                self.guest_id = False
+            elif self.staff_department_id and (self.staff_department_id.company_id != company):
+                self.staff_department_id = False
+            elif self.staff_work_location_id and (self.staff_work_location_id.company_id and self.staff_work_location_id.company_id != company):
+                self.staff_work_location_id = False
+
+            self.staff_is_cross_company = bool(
+                self.company_id and company != self.company_id
+            )
+            company_id_val = company.id if isinstance(company.id, int) else (company._origin.id or False)
+            res["domain"] = {
+                "staff_id": [("company_id", "=", company_id_val)],
+                "staff_department_id": [("company_id", "=", company_id_val)],
+                "staff_work_location_id": [("company_id", "=", company_id_val)],
+            }
+        else:
+            self.staff_is_cross_company = False
+            res["domain"] = {
+                "staff_id": [],
+                "staff_department_id": [],
+                "staff_work_location_id": [],
+            }
+        return res
+
+    @api.constrains("staff_id", "staff_company_id")
+    def _check_staff_company_consistency(self):
+        for res in self:
+            if res.reservation_type == "staff" and res.staff_id and res.staff_company_id:
+                if res.staff_id.company_id and res.staff_id.company_id != res.staff_company_id:
+                    raise ValidationError(
+                        _(
+                            "Staff member %(employee)s belongs to %(emp_company)s, not %(selected_company)s. "
+                            "Please select a staff member belonging to %(selected_company)s.",
+                            employee=res.staff_id.name,
+                            emp_company=res.staff_id.company_id.name,
+                            selected_company=res.staff_company_id.name,
+                        )
+                    )
+
+    @api.model
+    def _register_hook(self):
+        super()._register_hook()
+        # Allow cross-company staff reading for hotel reservations and directory
+        for xmlid in ("hr.hr_employee_comp_rule", "hr.hr_dept_comp_rule", "hr.hr_employee_public_comp_rule"):
+            rule = self.env.ref(xmlid, raise_if_not_found=False)
+            if rule and rule.perm_read:
+                rule.sudo().write({"perm_read": False})
+
+    @api.onchange("reservation_type")
+    def _onchange_reservation_type(self):
+        if self.reservation_type == "staff":
+            self.breakfast_option = "without"
+            self.deposit = 0.0
+            self.deposit_journal_id = False
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
+            if vals.get("reservation_type") == "staff":
+                vals["breakfast_option"] = "without"
+                vals["deposit"] = 0.0
+                vals["deposit_journal_id"] = False
+                if vals.get("staff_id") and not vals.get("guest_id"):
+                    staff = self.env["hr.employee"].browse(vals["staff_id"])
+                    partner = staff.work_contact_id or staff.user_id.partner_id
+                    if not partner:
+                        partner = self.env["res.partner"].search([("name", "=", staff.name)], limit=1)
+                        if not partner:
+                            partner = self.env["res.partner"].create({"name": staff.name})
+                    vals["guest_id"] = partner.id
             if not vals.get("name") or vals.get("name") in ("New", _("New"), "/"):
                 company_id = vals.get("company_id") or self.env.company.id
                 seq_obj = self.env["ir.sequence"].with_company(company_id).sudo()
@@ -422,14 +651,105 @@ class HotelReservation(models.Model):
             policy = self.env["hotel.config"].with_company(res.company_id)._hotel_reservation_confirmation_policy()
             if policy == "auto" and res.state == "draft":
                 res.action_confirm()
+            elif res.state in ("confirmed", "checked_in") and res.breakfast_option == "with":
+                res._sync_breakfast_consumption_records()
         return records
 
+    def write(self, vals):
+        locked_fields = {
+            "guest_id",
+            "staff_id",
+            "staff_company_id",
+            "staff_work_location_id",
+            "staff_department_id",
+            "reservation_type",
+            "source",
+            "room_type_id",
+            "room_id",
+            "checkin",
+            "checkout",
+            "adults",
+            "children",
+            "breakfast_option",
+            "breakfast_price",
+            "base_rate",
+            "discount",
+            "deposit",
+            "deposit_journal_id",
+            "line_ids",
+            "id_type",
+            "id_number",
+            "id_document",
+            "id_document_filename",
+            "nationality_id",
+            "guest_phone",
+            "registered_guests",
+            "guest_line_ids",
+            "breakfast_consumption_ids",
+        }
+        for res in self:
+            if res.state in ("checked_out", "cancelled"):
+                modified = locked_fields.intersection(vals.keys())
+                if modified:
+                    state_label = dict(res._fields["state"].selection).get(res.state, res.state)
+                    raise ValidationError(
+                        _(
+                            "Reservation %(name)s is %(state)s. Stay details, guest registration, "
+                            "breakfast, and billing cannot be modified after check-out.",
+                            name=res.name,
+                            state=state_label,
+                        )
+                    )
+
+        if vals.get("reservation_type") == "staff":
+            vals["breakfast_option"] = "without"
+            if vals.get("staff_id") and not vals.get("guest_id"):
+                staff = self.env["hr.employee"].browse(vals["staff_id"])
+                partner = staff.work_contact_id or staff.user_id.partner_id
+                if not partner:
+                    partner = self.env["res.partner"].search([("name", "=", staff.name)], limit=1)
+                    if not partner:
+                        partner = self.env["res.partner"].create({"name": staff.name})
+                vals["guest_id"] = partner.id
+        elif vals.get("staff_id") and not vals.get("guest_id"):
+            for res in self:
+                if (vals.get("reservation_type") or res.reservation_type) == "staff":
+                    staff = self.env["hr.employee"].browse(vals["staff_id"])
+                    partner = staff.work_contact_id or staff.user_id.partner_id
+                    if not partner:
+                        partner = self.env["res.partner"].search([("name", "=", staff.name)], limit=1)
+                        if not partner:
+                            partner = self.env["res.partner"].create({"name": staff.name})
+                    vals["guest_id"] = partner.id
+                    break
+
+        res = super().write(vals)
+
+        sync_fields = {
+            "checkin",
+            "checkout",
+            "adults",
+            "children",
+            "breakfast_option",
+            "reservation_type",
+            "guest_id",
+            "guest_line_ids",
+            "state",
+        }
+        if sync_fields.intersection(vals.keys()):
+            self._sync_breakfast_consumption_records()
+        return res
+
     @api.depends("room_type_id", "guest_id", "checkin")
-    def _compute_rate(self):
+    def _compute_base_rate(self):
         for reservation in self:
-            product = reservation.room_type_id.product_id
+            product = reservation.room_type_id.product_id if reservation.room_type_id else False
             price = False
-            pricelist = reservation.guest_id.property_product_pricelist
+            pricelist = (
+                reservation.guest_id.property_product_pricelist
+                if reservation.guest_id
+                else False
+            )
             if product and pricelist:
                 price = pricelist._get_product_price(
                     product,
@@ -442,7 +762,77 @@ class HotelReservation(models.Model):
                         else fields.Date.context_today(reservation)
                     ),
                 )
-            reservation.rate = price or reservation.room_type_id.base_price
+            reservation.base_rate = (
+                price
+                or (reservation.room_type_id.base_price if reservation.room_type_id else 0.0)
+            )
+
+    @api.depends(
+        "room_type_id",
+        "company_id",
+        "breakfast_option",
+        "adults",
+        "children",
+        "billable_nights",
+        "nights",
+        "reservation_type",
+    )
+    def _compute_breakfast_pricing(self):
+        hotel_config = self.env["hotel.config"]
+        for reservation in self:
+            if (
+                reservation.breakfast_option == "with"
+                and reservation.reservation_type != "staff"
+            ):
+                price = (
+                    reservation.room_type_id.breakfast_price
+                    or hotel_config.with_company(
+                        reservation.company_id
+                    )._hotel_breakfast_price()
+                )
+                guests = max(
+                    1, (reservation.adults or 0) + (reservation.children or 0)
+                )
+                per_night = price * guests
+                nights = (
+                    reservation.billable_nights or reservation.nights or 1
+                )
+                reservation.breakfast_price = price
+                reservation.breakfast_amount_per_night = per_night
+                reservation.breakfast_total = per_night * nights
+            else:
+                reservation.breakfast_price = 0.0
+                reservation.breakfast_amount_per_night = 0.0
+                reservation.breakfast_total = 0.0
+
+    @api.depends("base_rate", "breakfast_option", "breakfast_amount_per_night", "reservation_type")
+    def _compute_rate(self):
+        for reservation in self:
+            base = reservation.base_rate or 0.0
+            if (
+                reservation.breakfast_option == "with"
+                and reservation.reservation_type != "staff"
+            ):
+                reservation.rate = base + (reservation.breakfast_amount_per_night or 0.0)
+            else:
+                reservation.rate = base
+
+    @api.depends(
+        "billable_nights",
+        "nights",
+        "base_rate",
+        "rate",
+        "discount",
+        "reservation_type",
+    )
+    def _compute_internal_cost(self):
+        for reservation in self:
+            nights = reservation.billable_nights or reservation.nights or 0
+            base = reservation.base_rate or reservation.rate or 0.0
+            cost = nights * base
+            if reservation.discount:
+                cost -= cost * (reservation.discount / 100.0)
+            reservation.internal_cost = max(0.0, cost)
 
     @api.model
     def _stay_nights(self, start, end):
@@ -482,6 +872,7 @@ class HotelReservation(models.Model):
         "deposit_paid",
         "line_ids.price_subtotal",
         "line_ids.billable",
+        "reservation_type",
     )
     def _compute_amounts(self):
         for reservation in self:
@@ -492,13 +883,21 @@ class HotelReservation(models.Model):
                 for line in reservation.line_ids
                 if line.billable
             )
-            total = room_charge + services
             deposit_effective = reservation.deposit_paid or reservation.deposit or 0.0
             reservation.room_total = room_charge
             reservation.service_total = services
-            reservation.total = total
-            reservation.balance_due = max(0.0, total - deposit_effective)
-            reservation.refund_due = max(0.0, deposit_effective - total)
+            if reservation.reservation_type == "staff":
+                # For staff reservations, accommodation is an internal cost (captured in internal_cost).
+                # Total stay cost includes accommodation + services.
+                total_stay_cost = (reservation.internal_cost or room_charge) + services
+                reservation.total = total_stay_cost
+                reservation.balance_due = max(0.0, services - deposit_effective)
+                reservation.refund_due = max(0.0, deposit_effective - services)
+            else:
+                total = room_charge + services
+                reservation.total = total
+                reservation.balance_due = max(0.0, total - deposit_effective)
+                reservation.refund_due = max(0.0, deposit_effective - total)
 
     @api.depends(
         "total",
@@ -610,6 +1009,110 @@ class HotelReservation(models.Model):
             "context": {"default_reservation_id": self.id},
         }
 
+    @api.depends("breakfast_consumption_ids.state")
+    def _compute_breakfast_counts(self):
+        for reservation in self:
+            recs = reservation.breakfast_consumption_ids
+            reservation.breakfast_count = len(recs)
+            reservation.breakfast_used_count = len(recs.filtered(lambda r: r.state == "used"))
+
+    def action_open_breakfast_consumption(self):
+        self.ensure_one()
+        return {
+            "name": _("Breakfast Consumption - %s") % self.name,
+            "type": "ir.actions.act_window",
+            "res_model": "hotel.breakfast.consumption",
+            "view_mode": "list,form",
+            "domain": [("reservation_id", "=", self.id)],
+            "context": {
+                "default_reservation_id": self.id,
+                "default_guest_id": self.guest_id.id,
+            },
+        }
+
+    def _sync_breakfast_consumption_records(self):
+        """Create, reconcile, or clean up expected breakfast consumption records."""
+        Consumption = self.env["hotel.breakfast.consumption"]
+        for reservation in self:
+            # If not with breakfast or staff or cancelled/draft, remove unconsumed records
+            if (
+                reservation.reservation_type == "staff"
+                or reservation.breakfast_option != "with"
+                or reservation.state in ("draft", "cancelled", "no_show")
+            ):
+                unconsumed = reservation.breakfast_consumption_ids.filtered(
+                    lambda r: r.state == "not_used"
+                )
+                if unconsumed:
+                    unconsumed.unlink()
+                continue
+
+            # Reservation is confirmed, checked_in, or checked_out With Breakfast
+            start_dt = reservation.actual_checkin or reservation.checkin
+            end_dt = reservation.actual_checkout or reservation.checkout
+            if not start_dt or not end_dt:
+                continue
+
+            start_date = start_dt.date()
+            end_date = end_dt.date()
+            stay_nights = max(1, (end_date - start_date).days)
+
+            # Breakfast mornings: morning after check-in through checkout day morning
+            breakfast_dates = [start_date + timedelta(days=i) for i in range(1, stay_nights + 1)]
+
+            # Determine guests
+            guest_slots = []
+            primary_name = reservation.guest_id.name if reservation.guest_id else _("Primary Guest")
+            primary_id = reservation.guest_id.id if reservation.guest_id else False
+            guest_slots.append({"guest_id": primary_id, "guest_name": primary_name, "slot": 1})
+
+            # Additional registered guests in guest_line_ids
+            idx = 2
+            for gline in reservation.guest_line_ids:
+                g_id = gline.guest_id.id if gline.guest_id else primary_id
+                g_name = gline.name or (gline.guest_id.name if gline.guest_id else f"{primary_name} (Guest {idx})")
+                guest_slots.append({"guest_id": g_id, "guest_name": g_name, "slot": idx})
+                idx += 1
+
+            total_guest_count = max(1, (reservation.adults or 0) + (reservation.children or 0))
+            while len(guest_slots) < total_guest_count:
+                guest_slots.append({
+                    "guest_id": primary_id,
+                    "guest_name": f"{primary_name} (Guest {idx})",
+                    "slot": idx,
+                })
+                idx += 1
+
+            existing_records = reservation.breakfast_consumption_ids
+            expected_keys = set()
+            for day_num, b_date in enumerate(breakfast_dates, start=1):
+                for slot in guest_slots:
+                    expected_keys.add((b_date, slot["guest_name"]))
+                    existing = existing_records.filtered(
+                        lambda r: r.date == b_date and (
+                            r.guest_name == slot["guest_name"]
+                            or (not r.guest_name and r.guest_id.id == slot["guest_id"])
+                        )
+                    )
+                    if not existing:
+                        Consumption.create({
+                            "reservation_id": reservation.id,
+                            "date": b_date,
+                            "day_number": day_num,
+                            "guest_id": slot["guest_id"],
+                            "guest_name": slot["guest_name"],
+                            "is_entitled": True,
+                            "state": "not_used",
+                            "quantity": 1.0,
+                        })
+
+            # Remove records that are no longer in expected dates/slots, only if state == 'not_used'
+            for rec in existing_records:
+                if rec.state == "not_used":
+                    key = (rec.date, rec.guest_name)
+                    if key not in expected_keys:
+                        rec.unlink()
+
     @api.onchange("room_type_id")
     def _onchange_room_type_id(self):
         for reservation in self:
@@ -682,6 +1185,15 @@ class HotelReservation(models.Model):
                     % (room.number, max_children),
                 )
 
+    @api.constrains("guest_id", "reservation_type", "staff_id")
+    def _check_guest_or_staff(self):
+        for reservation in self:
+            if reservation.reservation_type == "staff":
+                if not reservation.staff_id and not reservation.guest_id:
+                    raise ValidationError(_("Please select a Staff Member for staff reservations."))
+            elif not reservation.guest_id:
+                raise ValidationError(_("Please select or create a Guest for the reservation."))
+
     def _action_set_state(self, state):
         for reservation in self:
             reservation.state = state
@@ -706,6 +1218,7 @@ class HotelReservation(models.Model):
         self.mapped("room_id")._sync_status_for_stay(
             "reserved", _("Reserved for a confirmed stay."),
         )
+        self._sync_breakfast_consumption_records()
         return True
 
     def action_cancel(self):
@@ -724,6 +1237,7 @@ class HotelReservation(models.Model):
             elif policy == "penalty":
                 reservation.message_post(body=_("Reservation cancelled under Cancellation Penalty policy."))
         self._action_set_state("cancelled")
+        self._sync_breakfast_consumption_records()
         return True
 
     def action_no_show(self):
@@ -737,6 +1251,7 @@ class HotelReservation(models.Model):
                     "available", _("Guest did not show up, room released."),
                 )
         self._action_set_state("no_show")
+        self._sync_breakfast_consumption_records()
         return True
 
     def action_checkin(self):
@@ -832,7 +1347,9 @@ class HotelReservation(models.Model):
     def _folio_invoice_lines(self):
         """Invoice lines for the guest folio: room charge plus extra services."""
         self.ensure_one()
-        lines = [Command.create(self._room_invoice_line_vals())]
+        lines = []
+        if self.reservation_type != "staff":
+            lines.append(Command.create(self._room_invoice_line_vals()))
         for line in self.line_ids.filtered("billable"):
             vals = {
                 "name": line.name,
@@ -913,6 +1430,10 @@ class HotelReservation(models.Model):
     def _action_create_folio_invoice(self):
         """Create the draft guest invoice for this stay."""
         self.ensure_one()
+        if self.reservation_type == "staff":
+            raise UserError(
+                _("Staff reservations do not generate guest room invoices.")
+            )
         if self.invoice_ids:
             raise UserError(
                 _("Reservation %s is already invoiced.") % self.name,
@@ -1209,6 +1730,10 @@ class HotelReservation(models.Model):
         for the PDF statement.
         """
         self.ensure_one()
+        if self.reservation_type == "staff":
+            raise UserError(
+                _("Staff reservations do not have a guest room folio invoice.")
+            )
         if self.state not in ("checked_in", "checked_out"):
             raise UserError(
                 _("Guest folio is only available after check-in."),
@@ -1237,6 +1762,30 @@ class HotelReservation(models.Model):
     def action_walkin(self):
         """Open the front-desk walk-in registration wizard."""
         return self.env["res.partner"].action_open_walkin_wizard()
+
+    def _register_hook(self):
+        super()._register_hook()
+        try:
+            with self.env.cr.savepoint():
+                self.env.cr.execute(
+                    """
+                    ALTER TABLE hotel_reservation
+                    ADD COLUMN IF NOT EXISTS reservation_type varchar DEFAULT 'guest',
+                    ADD COLUMN IF NOT EXISTS staff_id integer,
+                    ADD COLUMN IF NOT EXISTS staff_company_id integer,
+                    ADD COLUMN IF NOT EXISTS staff_department_id integer,
+                    ADD COLUMN IF NOT EXISTS staff_work_location_id integer,
+                    ADD COLUMN IF NOT EXISTS staff_is_cross_company boolean DEFAULT false,
+                    ADD COLUMN IF NOT EXISTS internal_cost numeric DEFAULT 0.0,
+                    ADD COLUMN IF NOT EXISTS breakfast_option varchar DEFAULT 'without',
+                    ADD COLUMN IF NOT EXISTS base_rate numeric DEFAULT 0.0,
+                    ADD COLUMN IF NOT EXISTS breakfast_price numeric DEFAULT 0.0,
+                    ADD COLUMN IF NOT EXISTS breakfast_amount_per_night numeric DEFAULT 0.0,
+                    ADD COLUMN IF NOT EXISTS breakfast_total numeric DEFAULT 0.0;
+                    """
+                )
+        except Exception:
+            pass
 
 
 class HotelReservationLine(models.Model):

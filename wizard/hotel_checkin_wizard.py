@@ -14,6 +14,10 @@ class HotelCheckinWizard(models.TransientModel):
         readonly=True,
         ondelete="cascade",
     )
+    reservation_type = fields.Selection(
+        related="reservation_id.reservation_type",
+        readonly=True,
+    )
     guest_id = fields.Many2one(
         comodel_name="res.partner",
         string="Guest",
@@ -45,6 +49,7 @@ class HotelCheckinWizard(models.TransientModel):
     id_document = fields.Binary(
         string="ID Document",
         attachment=True,
+        required=True,
         help="Scan or photo of the guest ID presented at check-in.",
     )
     id_document_filename = fields.Char(string="ID Filename")
@@ -134,14 +139,18 @@ class HotelCheckinWizard(models.TransientModel):
                     "adults": reservation.adults,
                     "children": reservation.children,
                     "registered_guests": reservation.adults + reservation.children,
-                    "deposit": reservation.deposit,
+                    "deposit": 0.0 if reservation.reservation_type == "staff" else reservation.deposit,
                     "payment_journal_id": (
-                        reservation.deposit_journal_id.id
-                        or reservation.payment_journal_id.id
-                        or self.env["hotel.config"]
-                        .with_company(reservation.company_id)
-                        ._hotel_deposit_journal()
-                        .id
+                        False
+                        if reservation.reservation_type == "staff"
+                        else (
+                            reservation.deposit_journal_id.id
+                            or reservation.payment_journal_id.id
+                            or self.env["hotel.config"]
+                            .with_company(reservation.company_id)
+                            ._hotel_deposit_journal()
+                            .id
+                        )
                     ),
                 }
             )
@@ -173,6 +182,11 @@ class HotelCheckinWizard(models.TransientModel):
                 _("Room %s hosts %d guests.")
                 % (room.number, room.capacity)
             )
+        if reservation.reservation_type != "staff":
+            if not self.id_type or not self.id_number or not self.id_document:
+                raise ValidationError(
+                    _("ID Type, ID Number, and ID Document are required before checking in a guest.")
+                )
         now = fields.Datetime.now()
         reservation.write(
             {
@@ -187,10 +201,10 @@ class HotelCheckinWizard(models.TransientModel):
                 "adults": self.adults,
                 "children": self.children,
                 "registered_guests": self.registered_guests,
-                "deposit": self.deposit,
+                "deposit": 0.0 if reservation.reservation_type == "staff" else self.deposit,
             }
         )
-        if self.amount_to_collect > 0:
+        if reservation.reservation_type != "staff" and self.amount_to_collect > 0:
             reservation._action_register_deposit_payment(
                 self.amount_to_collect,
                 journal=self.payment_journal_id,

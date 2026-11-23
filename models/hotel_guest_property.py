@@ -482,18 +482,23 @@ class HotelGuestProperty(models.Model):
 
     def action_return(self):
         for prop in self:
-            if prop.state not in ("stored", "ready_return"):
+            if prop.state not in ("stored", "ready_return", "received"):
                 raise ValidationError(
                     _("Only items held by the hotel can be returned to the guest.")
                 )
             if not prop.returned_to:
-                raise ValidationError(
-                    _(
-                        "Record who receives %s back before confirming the return."
-                    )
-                    % prop.name
-                )
+                prop.returned_to = prop.guest_id.name or _("Guest")
         now = fields.Datetime.now()
+        for prop in self:
+            open_deposits = prop.deposit_ids.filtered(lambda d: d.state in ("received", "stored"))
+            if open_deposits:
+                open_deposits.write({
+                    "state": "released",
+                    "released_by_id": self.env.user.id,
+                    "released_date": now,
+                })
+                for dep in open_deposits:
+                    dep.message_post(body=_("Safe deposit automatically released upon property return."))
         self.write(
             {
                 "state": "returned",

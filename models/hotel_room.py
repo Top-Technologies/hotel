@@ -123,6 +123,15 @@ class HotelRoom(models.Model):
     maintenance_count = fields.Integer(
         string="Maintenance Requests", compute="_compute_maintenance_count",
     )
+    room_consumption_ids = fields.One2many(
+        comodel_name="hotel.room.consumption",
+        inverse_name="room_id",
+        string="Room Consumptions",
+    )
+    room_consumption_count = fields.Integer(
+        string="Consumption Records",
+        compute="_compute_room_consumption_count",
+    )
     note = fields.Text(string="Notes")
 
     _sql_constraints = [
@@ -332,6 +341,21 @@ class HotelRoom(models.Model):
             "context": {
                 "default_room_id": self.id,
             },
+        }
+
+    def _compute_room_consumption_count(self):
+        for room in self:
+            room.room_consumption_count = len(room.room_consumption_ids)
+
+    def action_open_room_consumptions(self):
+        self.ensure_one()
+        return {
+            "name": _("Room Consumption - %s", self.name),
+            "type": "ir.actions.act_window",
+            "res_model": "hotel.room.consumption",
+            "view_mode": "list,form,pivot",
+            "domain": [("room_id", "=", self.id)],
+            "context": {"default_room_id": self.id},
         }
 
     def action_set_out_of_service(self):

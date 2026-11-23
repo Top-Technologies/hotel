@@ -9,6 +9,7 @@ from . import hotel_room_consumable
 from . import hotel_room_type
 from . import hotel_room
 from . import hotel_reservation
+from . import hotel_breakfast_consumption
 from . import hotel_account_move
 from . import hotel_account_payment
 from . import hotel_complaint

@@ -210,6 +210,13 @@ class ResCompany(models.Model):
         help="Initial state for new reservations when created.",
     )
 
+    # Breakfast Pricing
+    hotel_breakfast_price = fields.Float(
+        string="Default Breakfast Price",
+        default=0.0,
+        help="Configurable breakfast charge per eligible guest per night.",
+    )
+
     # Room Consumption Defaults
     hotel_consumable_standard_qty = fields.Float(
         string="Default Standard Quantity",
@@ -267,3 +274,16 @@ class ResCompany(models.Model):
         default=15.0,
         digits="Discount",
     )
+
+    def _register_hook(self):
+        super()._register_hook()
+        try:
+            with self.env.cr.savepoint():
+                self.env.cr.execute(
+                    """
+                    ALTER TABLE res_company
+                    ADD COLUMN IF NOT EXISTS hotel_breakfast_price double precision DEFAULT 0.0;
+                    """
+                )
+        except Exception:
+            pass

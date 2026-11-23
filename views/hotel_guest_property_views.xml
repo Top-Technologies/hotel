@@ -68,7 +68,7 @@
                 <field name="is_return_due_today" column_invisible="1"/>
                 <field name="is_return_overdue" column_invisible="1"/>
                 <field name="custody_count" string="Custody" optional="hide"/>
-                <field name="deposit_count" string="Deposits" optional="hide"/>
+                <field name="deposit_count" string="Safe Deposits" optional="hide"/>
             </list>
         </field>
     </record>
@@ -143,7 +143,7 @@
                         </button>
                         <button name="action_open_deposits" type="object"
                                 class="oe_stat_button" icon="fa-lock" invisible="not id">
-                            <field name="deposit_count" widget="statinfo" string="Deposits"/>
+                            <field name="deposit_count" widget="statinfo" string="Safe Deposits"/>
                         </button>
                     </div>
                     <div class="oe_title">
@@ -182,7 +182,7 @@
                         <group string="Return">
                             <field name="returned_date" readonly="1"/>
                             <field name="returned_by_id" readonly="1"/>
-                            <field name="returned_to" readonly="1"/>
+                            <field name="returned_to" placeholder="Defaults to guest name..." readonly="state in ('returned', 'cancelled')"/>
                         </group>
                     </group>
                     <notebook>

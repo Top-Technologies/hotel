@@ -43,6 +43,11 @@
               action="hotel_guest_action" sequence="40"
               groups="hotel.group_receptionist"/>
 
+    <menuitem id="menu_hotel_breakfast_tracking" name="Breakfast Tracking"
+              parent="menu_hotel_front_desk"
+              action="hotel_breakfast_consumption_action" sequence="45"
+              groups="hotel.group_receptionist"/>
+
 
 
     <!-- Complaints -->

@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Breakfast Consumption List View -->
+    <record id="hotel_breakfast_consumption_view_list" model="ir.ui.view">
+        <field name="name">hotel.breakfast.consumption.list</field>
+        <field name="model">hotel.breakfast.consumption</field>
+        <field name="arch" type="xml">
+            <list string="Breakfast Consumption" decoration-muted="state == 'not_used'" decoration-success="state == 'used'">
+                <field name="date"/>
+                <field name="room_id"/>
+                <field name="reservation_id"/>
+                <field name="guest_name" string="Guest"/>
+                <field name="day_number" string="Stay Day" optional="show"/>
+                <field name="is_entitled" string="Included" widget="boolean" optional="show"/>
+                <field name="quantity" optional="hide"/>
+                <field name="state" widget="badge"
+                       decoration-warning="state == 'not_used'"
+                       decoration-success="state == 'used'"/>
+                <field name="user_id" string="Recorded By" optional="show"/>
+                <field name="recorded_at" string="Recorded At" optional="show"/>
+                <button name="action_mark_used" type="object" string="Mark Used"
+                        class="btn-success btn-sm" icon="fa-check"
+                        invisible="state == 'used'"/>
+                <button name="action_mark_not_used" type="object" string="Reset"
+                        class="btn-secondary btn-sm" icon="fa-undo"
+                        invisible="state == 'not_used'"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Breakfast Consumption Form View -->
+    <record id="hotel_breakfast_consumption_view_form" model="ir.ui.view">
+        <field name="name">hotel.breakfast.consumption.form</field>
+        <field name="model">hotel.breakfast.consumption</field>
+        <field name="arch" type="xml">
+            <form string="Breakfast Tracking Record">
+                <header>
+                    <button name="action_mark_used" type="object" string="Mark Used"
+                            class="btn-primary" invisible="state == 'used'"/>
+                    <button name="action_mark_not_used" type="object" string="Mark Not Used"
+                            class="btn-secondary" invisible="state == 'not_used'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="not_used,used"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Stay &amp; Guest">
+                            <field name="reservation_id"/>
+                            <field name="room_id"/>
+                            <field name="guest_id"/>
+                            <field name="guest_name"/>
+                        </group>
+                        <group string="Entitlement &amp; Date">
+                            <field name="date"/>
+                            <field name="day_number"/>
+                            <field name="is_entitled"/>
+                            <field name="quantity"/>
+                        </group>
+                    </group>
+                    <group string="Audit &amp; Record">
+                        <group>
+                            <field name="user_id"/>
+                            <field name="recorded_at"/>
+                        </group>
+                        <group>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <group string="Notes">
+                        <field name="notes" placeholder="e.g. Guest requested takeaway breakfast box"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- Breakfast Consumption Search View -->
+    <record id="hotel_breakfast_consumption_view_search" model="ir.ui.view">
+        <field name="name">hotel.breakfast.consumption.search</field>
+        <field name="model">hotel.breakfast.consumption</field>
+        <field name="arch" type="xml">
+            <search string="Search Breakfast Tracking">
+                <field name="reservation_id"/>
+                <field name="room_id"/>
+                <field name="guest_name" string="Guest"/>
+                <field name="date"/>
+                <separator/>
+                <filter name="today" string="Today"
+                        domain="[('date', '=', context_today())]"/>
+                <filter name="not_used" string="Not Used"
+                        domain="[('state', '=', 'not_used')]"/>
+                <filter name="used" string="Used"
+                        domain="[('state', '=', 'used')]"/>
+                <filter name="entitled" string="Entitled"
+                        domain="[('is_entitled', '=', True)]"/>
+                <separator/>
+                <group expand="0" string="Group By">
+                    <filter name="group_by_date" string="Breakfast Date" context="{'group_by': 'date:day'}"/>
+                    <filter name="group_by_room" string="Room" context="{'group_by': 'room_id'}"/>
+                    <filter name="group_by_state" string="Status" context="{'group_by': 'state'}"/>
+                    <filter name="group_by_reservation" string="Reservation" context="{'group_by': 'reservation_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Breakfast Consumption Action -->
+    <record id="hotel_breakfast_consumption_action" model="ir.actions.act_window">
+        <field name="name">Breakfast Tracking</field>
+        <field name="res_model">hotel.breakfast.consumption</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="hotel_breakfast_consumption_view_search"/>
+        <field name="context">{'search_default_today': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No breakfast consumption records found.
+            </p>
+            <p>
+                Breakfast tracking records are generated automatically when a reservation with breakfast is confirmed.
+            </p>
+        </field>
+    </record>
+
+</odoo>

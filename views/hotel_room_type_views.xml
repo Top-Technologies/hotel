@@ -49,6 +49,7 @@
                 <field name="name"/>
                 <field name="capacity"/>
                 <field name="base_price" sum="Base Rates"/>
+                <field name="breakfast_price" optional="show"/>
                 <field name="product_id" optional="show"/>
                 <field name="income_account_id" optional="hide"/>
                 <field name="analytic_account_id" optional="show"/>
@@ -77,6 +78,7 @@
                             <field name="capacity"/>
                             <field name="child_capacity"/>
                             <field name="base_price"/>
+                            <field name="breakfast_price"/>
                             <field name="currency_id" invisible="1"/>
                             <field name="active"/>
                             <field name="company_id" groups="base.group_multi_company" options="{'no_create': True}"/>

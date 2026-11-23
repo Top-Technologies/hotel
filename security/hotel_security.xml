@@ -78,4 +78,15 @@
             major rate changes and credit approvals.</field>
     </record>
 
+    <!-- Multi-company read access for sister company staff reservations and directory -->
+    <record id="hr.hr_employee_comp_rule" model="ir.rule">
+        <field name="perm_read" eval="False"/>
+    </record>
+    <record id="hr.hr_dept_comp_rule" model="ir.rule">
+        <field name="perm_read" eval="False"/>
+    </record>
+    <record id="hr.hr_employee_public_comp_rule" model="ir.rule">
+        <field name="perm_read" eval="False"/>
+    </record>
+
 </odoo>

@@ -232,6 +232,12 @@ class HotelWalkinWizard(models.TransientModel):
                 % room.number
             )
 
+        if self.customer_type != "corporate":
+            if not self.id_type or not self.id_number or not self.id_document:
+                raise ValidationError(
+                    _("ID Type, ID Number, and ID Document are required for walk-in guest registration.")
+                )
+
         guest = self.guest_id
         guest.write(
             {

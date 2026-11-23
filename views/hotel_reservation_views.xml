@@ -25,6 +25,7 @@
                 </header>
                 <field name="guest_id"/>
                 <field name="name"/>
+                <field name="reservation_type" optional="show"/>
                 <field name="source" optional="show"/>
                 <field name="room_id"/>
                 <field name="room_type_id"/>
@@ -32,6 +33,10 @@
                 <field name="checkout" string="Stay To"/>
                 <field name="actual_checkin" string="Checked-in On" optional="hide"/>
                 <field name="nights" sum="Nights"/>
+                <field name="breakfast_option" optional="show"/>
+                <field name="staff_company_id" string="Staff Company" optional="hide"/>
+                <field name="staff_work_location_id" string="Staff Branch" optional="hide"/>
+                <field name="staff_is_cross_company" string="Other Entity Staff" optional="hide" widget="boolean_toggle"/>
                 <field name="state" widget="badge"
                        decoration-info="state == 'draft'"
                        decoration-success="state in ('checked_out',)"
@@ -61,7 +66,7 @@
                             string="Registration Card"
                             invisible="state != 'checked_in'"/>
                     <button name="action_open_guest_folio" type="object" string="Guest Folio"
-                            invisible="state not in ('checked_in','checked_out')"/>
+                            invisible="state not in ('checked_in','checked_out') or reservation_type == 'staff'"/>
                     <button name="action_no_show" type="object" string="No-show"
                             invisible="state != 'confirmed'"/>
                     <button name="action_cancel" type="object" string="Cancel"
@@ -73,8 +78,19 @@
                     <div class="oe_button_box" name="button_box">
                         <button name="action_open_invoices" type="object"
                                 class="oe_stat_button" icon="fa-pencil-square-o"
-                                invisible="invoice_count == 0">
+                                invisible="invoice_count == 0 or reservation_type == 'staff'">
                             <field name="invoice_count" widget="statinfo" string="Invoices"/>
+                        </button>
+                        <button name="action_open_breakfast_consumption"
+                                type="object" class="oe_stat_button"
+                                icon="fa-coffee"
+                                invisible="breakfast_option != 'with' or breakfast_count == 0 or reservation_type == 'staff'">
+                            <div class="o_stat_info">
+                                <span class="o_stat_value">
+                                    <field name="breakfast_used_count"/> / <field name="breakfast_count"/>
+                                </span>
+                                <span class="o_stat_text">Breakfasts</span>
+                            </div>
                         </button>
                         <button name="action_open_complaints" type="object"
                                 class="oe_stat_button" icon="fa-comment"
@@ -97,40 +113,87 @@
                         </button>
                     </div>
                     <div class="oe_title">
-                        <h1><field name="guest_id" placeholder="Guest Name"/></h1>
+                        <div class="o_row mb-2">
+                            <field name="reservation_type" widget="radio" options="{'horizontal': true}" readonly="state in ('checked_out', 'cancelled')"/>
+                        </div>
+                        <div invisible="reservation_type != 'staff'">
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-6">
+                                    <label for="staff_company_id" string="Staff Company"/>
+                                    <field name="staff_company_id" options="{'no_create': True}" readonly="state in ('checked_out', 'cancelled')" placeholder="Select Staff Company..."/>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="staff_work_location_id" string="Branch / Work Location"/>
+                                    <field name="staff_work_location_id" options="{'no_create': True}" domain="[('company_id', '=?', staff_company_id)]" readonly="state in ('checked_out', 'cancelled')"/>
+                                </div>
+                            </div>
+                            <label for="staff_id" string="Staff Member"/>
+                            <h1><field name="staff_id" placeholder="Select Staff Member..." options="{'no_create': True}" domain="[('company_id', '=?', staff_company_id)]" required="reservation_type == 'staff'" readonly="state in ('checked_out', 'cancelled')"/></h1>
+                            <div class="row g-2 mt-2 mb-1">
+                                <div class="col-md-6">
+                                    <label for="staff_department_id" string="Department"/>
+                                    <field name="staff_department_id" options="{'no_create': True}" domain="[('company_id', '=?', staff_company_id)]" readonly="state in ('checked_out', 'cancelled')"/>
+                                </div>
+                            </div>
+                            <field name="staff_is_cross_company" invisible="1"/>
+                            <div invisible="not staff_is_cross_company" class="alert alert-info py-2 px-3 mt-2 mb-0 d-flex align-items-center" role="alert">
+                                <i class="fa fa-building-o fa-lg me-2 text-primary"/>
+                                <div>
+                                    <strong>Other Company / Branch:</strong> This staff member belongs to
+                                    <field name="staff_company_id" readonly="1" class="fw-bold text-dark" options="{'no_open': True}"/>
+                                    <span invisible="not staff_work_location_id"> (Branch: <field name="staff_work_location_id" readonly="1" options="{'no_open': True}"/>)</span>.
+                                    Accommodation cost is tracked internally under staff expenses.
+                                </div>
+                            </div>
+                        </div>
+                        <div invisible="reservation_type == 'staff'">
+                            <label for="guest_id" string="Guest Name"/>
+                            <h1><field name="guest_id" placeholder="Guest Name" required="reservation_type != 'staff'" readonly="state in ('checked_out', 'cancelled')"/></h1>
+                        </div>
                         <h3><field name="name" readonly="1"/></h3>
                     </div>
                     <group>
                         <group string="Stay">
-                            <field name="source"/>
-                            <field name="room_type_id"/>
+                            <field name="source" readonly="state in ('checked_out', 'cancelled')"/>
+                            <field name="room_type_id" readonly="state in ('checked_out', 'cancelled')"/>
                             <field name="room_id"
-                                   domain="[('room_type_id', '=', room_type_id), ('status', 'in', ('clean', 'inspected', 'available', 'reserved')), ('id', 'not in', booked_room_ids)]"/>
-                            <field name="checkin" string="Stay From"/>
-                            <field name="checkout" string="Stay To"/>
-                            <field name="nights"/>
+                                   domain="[('room_type_id', '=', room_type_id), ('status', 'in', ('clean', 'inspected', 'available', 'reserved')), ('id', 'not in', booked_room_ids)]"
+                                   readonly="state in ('checked_out', 'cancelled')"/>
+                            <field name="checkin" string="Stay From" readonly="state in ('checked_out', 'cancelled')"/>
+                            <field name="checkout" string="Stay To" readonly="state in ('checked_out', 'cancelled')"/>
+                            <field name="nights" readonly="state in ('checked_out', 'cancelled')"/>
                             <field name="actual_checkin" string="Checked-in On"
                                    invisible="not actual_checkin"/>
                             <field name="actual_nights" invisible="not actual_nights"/>
-                            <field name="adults"/>
-                            <field name="children"/>
+                            <field name="adults" readonly="state in ('checked_out', 'cancelled')"/>
+                            <field name="children" readonly="state in ('checked_out', 'cancelled')"/>
+                            <field name="breakfast_option" widget="radio" options="{'horizontal': true}"
+                                   invisible="reservation_type == 'staff'"
+                                   readonly="state in ('checked_out', 'cancelled')"/>
                         </group>
                         <group string="Charges">
-                            <field name="rate"/>
-                            <field name="discount"/>
-                            <field name="room_total"/>
+                            <field name="base_rate" readonly="state in ('checked_out', 'cancelled')"/>
+                            <field name="breakfast_price" invisible="breakfast_option != 'with' or reservation_type == 'staff'"/>
+                            <field name="breakfast_amount_per_night" invisible="breakfast_option != 'with' or reservation_type == 'staff'"/>
+                            <field name="breakfast_total" invisible="breakfast_option != 'with' or reservation_type == 'staff'"/>
+                            <field name="rate" string="Total Rate / Night"/>
+                            <field name="discount" readonly="state in ('checked_out', 'cancelled')"/>
+                            <field name="internal_cost" invisible="reservation_type != 'staff'" class="fw-bold text-info"/>
+                            <field name="room_total" invisible="reservation_type == 'staff'"/>
                             <field name="service_total"/>
                             <field name="total" class="fw-bold"/>
-                            <field name="deposit"/>
+                            <field name="deposit" invisible="reservation_type == 'staff'" readonly="state in ('checked_out', 'cancelled')"/>
                             <field name="deposit_journal_id" string="Bank or Cash"
                                    options="{'no_create': True, 'no_open': True}"
-                                   placeholder="Select Bank or Cash journal..."/>
+                                   placeholder="Select Bank or Cash journal..."
+                                   invisible="reservation_type == 'staff'"
+                                   readonly="state in ('checked_out', 'cancelled')"/>
                             <button name="action_register_deposit" type="object"
                                     string="Register Deposit" class="btn btn-sm btn-outline-primary"
-                                    invisible="not deposit or deposit_paid &gt;= deposit or state in ('checked_out', 'cancelled')"/>
-                            <field name="deposit_paid" invisible="not deposit_paid"/>
-                            <field name="balance_due" class="fw-bold text-primary" invisible="balance_due == 0 and refund_due &gt; 0"/>
-                            <field name="refund_due" class="fw-bold text-success" invisible="refund_due == 0"/>
+                                    invisible="reservation_type == 'staff' or not deposit or deposit_paid &gt;= deposit or state in ('checked_out', 'cancelled')"/>
+                            <field name="deposit_paid" invisible="not deposit_paid or reservation_type == 'staff'"/>
+                            <field name="balance_due" class="fw-bold text-primary" invisible="reservation_type == 'staff' or (balance_due == 0 and refund_due &gt; 0)"/>
+                            <field name="refund_due" class="fw-bold text-success" invisible="refund_due == 0 or reservation_type == 'staff'"/>
                             <field name="currency_id" invisible="1"/>
                         </group>
                     </group>
@@ -200,7 +263,7 @@
                         </page>
                         <page string="Extra Services" name="services">
                             <separator string="Extra Services &amp; Special Requests"/>
-                            <field name="line_ids" context="{'default_reservation_id': id}">
+                            <field name="line_ids" context="{'default_reservation_id': id}" readonly="state in ('checked_out', 'cancelled')">
                                 <list string="Extra Services" editable="bottom">
                                     <field name="sequence" widget="handle"/>
                                     <field name="service_type"/>
@@ -218,23 +281,25 @@
                         <page string="Guest Registration" name="registration">
                             <group>
                                 <group>
-                                    <field name="id_type"/>
-                                    <field name="id_number"/>
+                                    <field name="id_type" required="reservation_type != 'staff'" readonly="state in ('checked_out', 'cancelled')"/>
+                                    <field name="id_number" required="reservation_type != 'staff'" readonly="state in ('checked_out', 'cancelled')"/>
                                     <field name="id_document"
                                            filename="id_document_filename"
-                                           widget="binary"/>
+                                           widget="binary"
+                                           required="reservation_type != 'staff'"
+                                           readonly="state in ('checked_out', 'cancelled')"/>
                                     <field name="id_document_filename" invisible="1"/>
-                                    <field name="nationality_id"/>
-                                    <field name="guest_phone" widget="phone"/>
+                                    <field name="nationality_id" readonly="state in ('checked_out', 'cancelled')"/>
+                                    <field name="guest_phone" widget="phone" readonly="state in ('checked_out', 'cancelled')"/>
                                 </group>
                                 <group>
                                     <field name="actual_checkin"/>
                                     <field name="actual_checkout"/>
-                                    <field name="registered_guests"/>
+                                    <field name="registered_guests" readonly="state in ('checked_out', 'cancelled')"/>
                                 </group>
                             </group>
                             <group string="Additional Guests">
-                                <field name="guest_line_ids" context="{'default_reservation_id': id}">
+                                <field name="guest_line_ids" context="{'default_reservation_id': id}" readonly="state in ('checked_out', 'cancelled')">
                                     <list string="Additional Guests on this Stay"
                                           editable="bottom">
                                         <field name="guest_id" create_edit="1"/>
@@ -250,7 +315,30 @@
                                 </field>
                             </group>
                         </page>
-                        <page string="Invoices" name="invoices">
+                        <page string="Breakfast" name="breakfast" invisible="breakfast_option != 'with' or reservation_type == 'staff'">
+                            <separator string="Daily Breakfast Entitlement &amp; Consumption"/>
+                            <field name="breakfast_consumption_ids" readonly="state in ('checked_out', 'cancelled')">
+                                <list string="Daily Breakfast Tracking" editable="bottom" create="0">
+                                    <field name="date" readonly="1"/>
+                                    <field name="guest_name" string="Guest" readonly="1"/>
+                                    <field name="day_number" string="Stay Day" readonly="1"/>
+                                    <field name="is_entitled" string="Included" widget="boolean" readonly="1"/>
+                                    <field name="state" widget="badge"
+                                           decoration-warning="state == 'not_used'"
+                                           decoration-success="state == 'used'"/>
+                                    <field name="user_id" string="Recorded By" readonly="1"/>
+                                    <field name="recorded_at" string="Recorded At" readonly="1"/>
+                                    <field name="notes" placeholder="Notes"/>
+                                    <button name="action_mark_used" type="object" string="Mark Used"
+                                            class="btn-success btn-sm" icon="fa-check"
+                                            invisible="state == 'used' or parent.state in ('checked_out', 'cancelled')"/>
+                                    <button name="action_mark_not_used" type="object" string="Reset"
+                                            class="btn-secondary btn-sm" icon="fa-undo"
+                                            invisible="state == 'not_used' or parent.state in ('checked_out', 'cancelled')"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Invoices" name="invoices" invisible="reservation_type == 'staff'">
                             <separator string="Guest Invoices"/>
                             <field name="invoice_ids" readonly="1">
                                 <list string="Guest Invoices" decoration-muted="state == 'cancel'" decoration-success="state == 'posted'">
@@ -269,8 +357,8 @@
                                            decoration-danger="state == 'cancel'"/>
                                 </list>
                             </field>
-                            <separator string="Advance Payments"/>
-                            <field name="deposit_payment_ids" readonly="1">
+                            <separator string="Advance Payments" invisible="reservation_type == 'staff'"/>
+                            <field name="deposit_payment_ids" readonly="1" invisible="reservation_type == 'staff'">
                                 <list string="Advance Payments" decoration-muted="state == 'cancel'" decoration-success="state == 'posted'">
                                     <field name="currency_id" column_invisible="1"/>
                                     <field name="date" string="Date"/>
@@ -369,6 +457,7 @@
                 <field name="room_type_id" type="row"/>
                 <field name="state" type="col"/>
                 <field name="total" type="measure"/>
+                <field name="internal_cost" type="measure"/>
                 <field name="nights" type="measure"/>
             </pivot>
         </field>
@@ -392,8 +481,19 @@
             <search string="Reservations">
                 <field name="name"/>
                 <field name="guest_id"/>
+                <field name="staff_id"/>
+                <field name="staff_company_id"/>
+                <field name="staff_work_location_id"/>
+                <field name="staff_department_id"/>
                 <field name="room_id"/>
                 <field name="room_type_id"/>
+                <filter name="filter_guest" string="Guest Bookings" domain="[('reservation_type','=','guest')]"/>
+                <filter name="filter_staff" string="Staff Bookings" domain="[('reservation_type','=','staff')]"/>
+                <filter name="filter_cross_company_staff" string="Other Company / Branch Staff" domain="[('reservation_type','=','staff'), ('staff_is_cross_company','=',True)]"/>
+                <separator/>
+                <filter name="filter_with_breakfast" string="With Breakfast" domain="[('breakfast_option','=','with')]"/>
+                <filter name="filter_without_breakfast" string="Without Breakfast" domain="[('breakfast_option','=','without')]"/>
+                <separator/>
                 <filter name="filter_draft" string="Draft" domain="[('state','=','draft')]"/>
                 <filter name="filter_confirmed" string="Confirmed"
                         domain="[('state','=','confirmed')]"/>
@@ -421,11 +521,17 @@
                 <filter name="filter_my_guests" string="My Guests"
                         domain="[('guest_id','=',context.uid)]"/>
                 <group name="group_by">
+                    <filter string="Category" name="group_type" context="{'group_by': 'reservation_type'}"/>
+                    <filter string="Breakfast" name="group_breakfast" context="{'group_by': 'breakfast_option'}"/>
                     <filter string="Status" name="group_state" context="{'group_by': 'state'}"/>
                     <filter string="Room" name="group_room" context="{'group_by': 'room_id'}"/>
-                    <filter string="Room Type" name="group_type"
+                    <filter string="Room Type" name="group_room_type"
                             context="{'group_by': 'room_type_id'}"/>
                     <filter string="Guest" name="group_guest" context="{'group_by': 'guest_id'}"/>
+                    <filter string="Staff Member" name="group_staff" context="{'group_by': 'staff_id'}"/>
+                    <filter string="Staff Company" name="group_staff_company" context="{'group_by': 'staff_company_id'}"/>
+                    <filter string="Staff Branch / Location" name="group_staff_location" context="{'group_by': 'staff_work_location_id'}"/>
+                    <filter string="Staff Department" name="group_staff_department" context="{'group_by': 'staff_department_id'}"/>
                     <filter string="Booking Source" name="group_source"
                             context="{'group_by': 'source'}"/>
                     <filter string="Arrival Month" name="group_month"

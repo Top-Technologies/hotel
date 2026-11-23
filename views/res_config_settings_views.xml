@@ -49,6 +49,11 @@
                                  help="Initial state for new reservations when created.">
                             <field name="hotel_default_reservation_state"/>
                         </setting>
+                        <setting id="hotel_breakfast_price_setting"
+                                 string="Default Breakfast Price"
+                                 help="Configurable breakfast charge per eligible guest per night for breakfast-inclusive bookings.">
+                            <field name="hotel_breakfast_price"/>
+                        </setting>
                     </block>
 
                     <block title="Housekeeping" name="housekeeping_block">

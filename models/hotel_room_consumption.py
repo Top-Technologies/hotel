@@ -35,10 +35,17 @@ class HotelRoomConsumption(models.Model):
         copy=False,
         index=True,
     )
+    room_id = fields.Many2one(
+        comodel_name="hotel.room",
+        string="Room",
+        required=True,
+        tracking=True,
+        index=True,
+    )
     reservation_id = fields.Many2one(
         comodel_name="hotel.reservation",
         string="Reservation",
-        required=True,
+        required=False,
         ondelete="restrict",
         tracking=True,
         index=True,
@@ -46,15 +53,9 @@ class HotelRoomConsumption(models.Model):
     guest_id = fields.Many2one(
         comodel_name="res.partner",
         string="Guest",
-        related="reservation_id.guest_id",
+        compute="_compute_guest_id",
         store=True,
-        index=True,
-    )
-    room_id = fields.Many2one(
-        comodel_name="hotel.room",
-        string="Room",
-        related="reservation_id.room_id",
-        store=True,
+        readonly=False,
         index=True,
     )
     stay_date = fields.Date(
@@ -192,6 +193,34 @@ class HotelRoomConsumption(models.Model):
         ),
     ]
 
+    @api.depends("reservation_id", "reservation_id.guest_id")
+    def _compute_guest_id(self):
+        for rec in self:
+            if rec.reservation_id:
+                rec.guest_id = rec.reservation_id.guest_id
+            elif not rec.guest_id:
+                rec.guest_id = False
+
+    @api.onchange("room_id")
+    def _onchange_room_id(self):
+        if self.room_id:
+            active_stay = self.env["hotel.reservation"].search([
+                ("room_id", "=", self.room_id.id),
+                ("state", "in", ("checked_in", "confirmed")),
+            ], order="checkin desc", limit=1)
+            if active_stay:
+                self.reservation_id = active_stay
+                self.guest_id = active_stay.guest_id
+            else:
+                self.reservation_id = False
+                self.guest_id = False
+
+    @api.onchange("reservation_id")
+    def _onchange_reservation_id(self):
+        if self.reservation_id:
+            self.room_id = self.reservation_id.room_id
+            self.guest_id = self.reservation_id.guest_id
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
@@ -200,6 +229,20 @@ class HotelRoomConsumption(models.Model):
                 vals["name"] = self.env["ir.sequence"].with_company(company_id).sudo().next_by_code(
                     "hotel.room.consumption",
                 ) or _("New")
+            if vals.get("room_id") and not vals.get("reservation_id"):
+                active_stay = self.env["hotel.reservation"].search([
+                    ("room_id", "=", vals["room_id"]),
+                    ("state", "in", ("checked_in", "confirmed")),
+                ], order="checkin desc", limit=1)
+                if active_stay:
+                    vals["reservation_id"] = active_stay.id
+                    if not vals.get("guest_id"):
+                        vals["guest_id"] = active_stay.guest_id.id
+            elif vals.get("reservation_id") and not vals.get("room_id"):
+                res = self.env["hotel.reservation"].browse(vals["reservation_id"])
+                vals["room_id"] = res.room_id.id
+                if not vals.get("guest_id"):
+                    vals["guest_id"] = res.guest_id.id
         self._check_unique_stay(vals_list)
         records = super().create(vals_list)
         records._reallocate_line_charges()
@@ -216,31 +259,26 @@ class HotelRoomConsumption(models.Model):
         the database, so the guest gets a readable message."""
         seen = set()
         for vals in vals_list:
-            reservation = vals.get("reservation_id")
             stay_date = vals.get("stay_date")
-            if not reservation or not stay_date:
+            if not stay_date:
                 continue
-            key = (reservation, str(stay_date)[:10])
-            if key in seen:
-                raise ValidationError(
-                    _(
-                        "A consumption record already exists for the stay "
-                        "day of %s.",
+            stay_date_str = str(stay_date)[:10]
+            if vals.get("reservation_id"):
+                key = ("res", vals["reservation_id"], stay_date_str)
+                if key in seen or self.search([("reservation_id", "=", vals["reservation_id"]), ("stay_date", "=", stay_date)], limit=1):
+                    res_name = self.env["hotel.reservation"].browse(vals["reservation_id"]).name
+                    raise ValidationError(
+                        _("A consumption record already exists for stay %(res)s on %(date)s.", res=res_name, date=stay_date_str)
                     )
-                    % self.env["hotel.reservation"].browse(reservation).name,
-                )
-            seen.add(key)
-            if self.search(
-                [("reservation_id", "=", reservation), ("stay_date", "=", stay_date)],
-                limit=1,
-            ):
-                raise ValidationError(
-                    _(
-                        "A consumption record already exists for the stay "
-                        "day of %s.",
+                seen.add(key)
+            elif vals.get("room_id"):
+                key = ("room", vals["room_id"], stay_date_str)
+                if key in seen or self.search([("room_id", "=", vals["room_id"]), ("stay_date", "=", stay_date)], limit=1):
+                    room_name = self.env["hotel.room"].browse(vals["room_id"]).name
+                    raise ValidationError(
+                        _("A consumption record already exists for Room %(room)s on %(date)s.", room=room_name, date=stay_date_str)
                     )
-                    % self.env["hotel.reservation"].browse(reservation).name,
-                )
+                seen.add(key)
 
     @api.depends(
         "line_ids.guest_charge",

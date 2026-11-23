@@ -57,6 +57,10 @@
                                 class="oe_stat_button" icon="fa-paint-brush">
                             <field name="cleaning_count" widget="statinfo" string="Cleanings"/>
                         </button>
+                        <button name="action_open_room_consumptions" type="object"
+                                class="oe_stat_button" icon="fa-cutlery">
+                            <field name="room_consumption_count" widget="statinfo" string="Consumption"/>
+                        </button>
                     </div>
                     <div class="oe_title">
                         <label for="number" string="Room"/>
