@@ -517,21 +517,22 @@ class HotelCheckoutWizard(models.TransientModel):
         invoice = self.env["account.move"]
         if self.create_invoice and reservation.reservation_type != "staff":
             invoice = reservation._action_create_folio_invoice()
-            invoice.action_post()
-            # Apply the advances already booked at booking / check-in.
-            applied = reservation._reconcile_deposit_payments(invoice)
-            # Compatibility: a deposit entered as a plain amount, with no
-            # payment behind it, is still settled as an advance.
-            deposit_to_deduct = self.deposit
-            if not applied and deposit_to_deduct > 0:
-                deposit_amt = min(deposit_to_deduct, invoice.amount_total)
-                self._action_register_payment(
-                    invoice,
-                    deposit_amt,
-                    _("Deposit %(name)s", name=reservation.name),
-                )
-                applied = deposit_amt
+            # If reception explicitly requested immediate settlement at checkout,
+            # post the invoice and register the settlement payment.
+            # Otherwise, keep the invoice as standard Odoo Draft so accounting/front desk
+            # can review, confirm/post, and register payments in standard Odoo.
             if self.settle_balance:
+                invoice.action_post()
+                applied = reservation._reconcile_deposit_payments(invoice)
+                deposit_to_deduct = self.deposit
+                if not applied and deposit_to_deduct > 0:
+                    deposit_amt = min(deposit_to_deduct, invoice.amount_total)
+                    self._action_register_payment(
+                        invoice,
+                        deposit_amt,
+                        _("Deposit %(name)s", name=reservation.name),
+                    )
+                    applied = deposit_amt
                 balance_to_settle = max(0.0, invoice.amount_total - applied)
                 if balance_to_settle > 0:
                     self._action_register_payment(

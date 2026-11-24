@@ -981,7 +981,7 @@ class HotelReservation(models.Model):
         for reservation in self:
             reservation.invoice_count = len(
                 reservation.invoice_ids.filtered(
-                    lambda move: move.state == "posted",
+                    lambda move: move.state != "cancel",
                 ),
             )
 
