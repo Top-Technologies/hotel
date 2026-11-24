@@ -100,7 +100,7 @@ class HotelCheckinWizard(models.TransientModel):
         readonly=True,
     )
     print_card = fields.Boolean(
-        string="Print Registration Card", default=True
+        string="Print Registration Card", default=False
     )
     notes = fields.Text(string="Notes")
 
@@ -243,5 +243,8 @@ class HotelCheckinWizard(models.TransientModel):
         if self.notes:
             reservation.message_post(body=_("Check-in note: %s") % self.notes)
         if self.print_card:
-            return reservation.action_print_registration_card()
-        return True
+            report_action = reservation.action_print_registration_card()
+            if isinstance(report_action, dict):
+                report_action["close_on_report_download"] = True
+            return report_action
+        return {"type": "ir.actions.act_window_close"}
