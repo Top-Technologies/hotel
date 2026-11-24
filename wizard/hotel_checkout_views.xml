@@ -109,9 +109,10 @@
                         </group>
                         <p class="text-muted" invisible="not create_invoice or reservation_type == 'staff'">
                             The guest invoice posts the room revenue to the income account and
-                            analytic account of the room type. Advances collected at
-                            booking/check-in are applied to the invoice, then the remaining
-                            balance is registered on the chosen journal.
+                            analytic account of the room type. Advances collected at booking/check-in
+                            are reconciled against the invoice. Check "Settle Balance Now" if you wish
+                            to immediately register payment for any remaining balance; otherwise, the
+                            invoice will remain posted with an open Amount Due for cashier collection.
                         </p>
                     </page>
                     <page string="Notes" name="notes">

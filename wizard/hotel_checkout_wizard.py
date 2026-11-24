@@ -148,7 +148,7 @@ class HotelCheckoutWizard(models.TransientModel):
     )
     settle_balance = fields.Boolean(
         string="Settle Balance Now",
-        default=True,
+        default=False,
         help="Register the deposit as a payment and the remaining balance on "
         "the chosen journal.",
     )
