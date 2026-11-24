@@ -1315,10 +1315,10 @@ class HotelReservation(models.Model):
     def action_open_invoices(self):
         self.ensure_one()
         action = self.env["ir.actions.act_window"]._for_xml_id(
-            "account.action_move_in_invoice_type",
+            "account.action_move_out_invoice_type",
         )
         action["domain"] = [("id", "in", self.invoice_ids.ids)]
-        action["context"] = {"create": False}
+        action["context"] = {"create": False, "default_move_type": "out_invoice"}
         action["name"] = _("Guest Invoices")
         return action
 
